@@ -1,4 +1,4 @@
-from ProjectFarm.game import ProjectFarm
+from projectFarm.game import ProjectFarm
 
 
 def main():
