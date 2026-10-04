@@ -7,13 +7,13 @@ class Jugador:
         self.velocidad = 5
 
     def actualizar(self, teclas):
-        if teclas[pygame.K_LEFT]:
+        if teclas[pygame.K_a]:
             self.rectangulo.x -= self.velocidad
-        if teclas[pygame.K_RIGHT]:
+        if teclas[pygame.K_d]:
             self.rectangulo.x += self.velocidad
-        if teclas[pygame.K_UP]:
+        if teclas[pygame.K_w]:
             self.rectangulo.y -= self.velocidad
-        if teclas[pygame.K_DOWN]:
+        if teclas[pygame.K_s]:
             self.rectangulo.y += self.velocidad
 
     def dibujar(self, pantalla):

@@ -12,14 +12,15 @@ class GameLoop:
         ejecutando = True
 
         while ejecutando:
-            for evento in pygame.event.get():
+            eventos = pygame.event.get()
+            for evento in eventos:
                 if evento.type == pygame.QUIT:
                     ejecutando = False
                 elif evento.type == pygame.KEYDOWN and evento.key == pygame.K_ESCAPE:
                     ejecutando = False
 
             teclas = pygame.key.get_pressed()
-            self.escena.update(teclas, self.pantalla.get_rect())
+            self.escena.update(teclas, self.pantalla.get_rect(), eventos)
             self.escena.draw(self.pantalla)
 
             pygame.display.flip()
