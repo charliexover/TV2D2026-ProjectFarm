@@ -1,0 +1,36 @@
+{
+    "project_name": "AstroSpritesheet",
+    "spritesheet_path": "../assets/spritesheetAstro.png",
+    "character_name": "Astro",
+    "animations": {
+        "default": [
+            {
+                "x": 34,
+                "y": 16,
+                "width": 14,
+                "height": 16,
+                "name": "Blink",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 50,
+                "y": 17,
+                "width": 14,
+                "height": 15,
+                "name": "Walk",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 18,
+                "y": 16,
+                "width": 14,
+                "height": 16,
+                "name": "Idle",
+                "description": "Sugerido",
+                "animation": "default"
+            }
+        ]
+    }
+}

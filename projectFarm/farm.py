@@ -4,7 +4,7 @@ import pygame
 CULTIVOS = {
     1: {
         "nombre": "zanahoria",
-        "dias_crecimiento": 3,
+        "dias_crecimiento": 2,
         "color": (170, 135, 55),
     },
 }

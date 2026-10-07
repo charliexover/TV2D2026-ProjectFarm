@@ -1,7 +1,7 @@
 import pygame
 
 from engine.game_loop import GameLoop
-from .scenes.game_scene import GameScene
+from projectFarm.scenes import SceneManager
 
 
 class ProjectFarm:
@@ -14,7 +14,7 @@ class ProjectFarm:
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("Proyecto Granja")
 
-        self.scene = GameScene()
+        self.scene = SceneManager()
         self.game_loop = GameLoop(self.screen, self.scene, self.FPS)
 
     def run(self):
