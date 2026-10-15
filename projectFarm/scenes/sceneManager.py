@@ -19,7 +19,7 @@ class SceneManager:
             self.cambiar_a_granja,
             self.granja.avanzar_dia,
         )
-        self.titulo = TitleScene(self.cambiar_a_granja)
+        self.titulo = TitleScene(self.cambiar_a_casa)
         self.registrar_escena("granja", self.granja, inicial=False)
         self.registrar_escena("casa", self.casa, inicial=False)
         self.registrar_escena("titulo", self.titulo, inicial=True)

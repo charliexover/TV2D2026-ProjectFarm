@@ -13,7 +13,7 @@ class Jugador:
 
     def __init__(self, x=100, y=100):
         self.rectangulo = pygame.Rect(x, y, 50, 50)
-        self.velocidad = 2
+        self.velocidad = 5
         spritesheet_json = Path(__file__).parent / "utils" / "AstroSpritesheet.json"
         spritesheet = Spritesheet(str(spritesheet_json))
         self.sprites = {
@@ -77,9 +77,10 @@ class Jugador:
                 if self.sprite == self.sprites["Blink"]:
                     self.sprite = self.sprites["Idle"]
 
-    def dibujar(self, pantalla):
+    def dibujar(self, pantalla, desplazamiento=(0, 0)):
         sprite = self.sprite
         if self.mirando_izquierda:
             sprite = self.sprites_izquierda[id(self.sprite)]
         posicion = sprite.get_rect(center=self.rectangulo.center)
+        posicion.move_ip(desplazamiento)
         pantalla.blit(sprite, posicion)
