@@ -5,7 +5,9 @@ class TitleScene:
     def __init__(self, al_iniciar_partida):
         self.al_iniciar_partida = al_iniciar_partida
         self.fuente = pygame.font.Font(None, 48)
-        self.texto = self.fuente.render("Nueva partida", True, (255, 255, 255))
+        self.texto = self.fuente.render(
+            "Proyecto Granja", True, (255, 255, 255)
+        )
         self.boton_rect = self.texto.get_rect()
 
     def update(self, teclas, limites_pantalla, eventos=()):

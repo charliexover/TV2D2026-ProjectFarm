@@ -33,14 +33,6 @@ class Chatarra:
                 )
         return chatarra
 
-    def dibujar(self, pantalla, desplazamiento=(0, 0)):
+    def dibujar(self, pantalla, sprite, desplazamiento=(0, 0)):
         rectangulo = self.rectangulo.move(desplazamiento)
-        pygame.draw.rect(pantalla, (115, 125, 130), rectangulo)
-        pygame.draw.rect(pantalla, (55, 65, 70), rectangulo, 2)
-        pygame.draw.line(
-            pantalla,
-            (175, 185, 190),
-            (rectangulo.left + 5, rectangulo.top + 8),
-            (rectangulo.right - 6, rectangulo.top + 8),
-            2,
-        )
+        pantalla.blit(sprite, rectangulo)

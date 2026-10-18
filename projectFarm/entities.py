@@ -13,7 +13,7 @@ class Jugador:
 
     def __init__(self, x=100, y=100):
         self.rectangulo = pygame.Rect(x, y, 50, 50)
-        self.velocidad = 5
+        self.velocidad = 4
         spritesheet_json = Path(__file__).parent / "utils" / "AstroSpritesheet.json"
         spritesheet = Spritesheet(str(spritesheet_json))
         self.sprites = {

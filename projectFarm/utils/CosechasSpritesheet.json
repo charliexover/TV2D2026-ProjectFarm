@@ -1,0 +1,126 @@
+{
+    "project_name": "CosechasSpritesheet",
+    "spritesheet_path": "C:/python/TVJ2D_2026_ProyectoGranja/projectFarm/assets/CosechasSprite.png",
+    "character_name": "CosechasSpritesheet",
+    "animations": {
+        "default": [
+            {
+                "x": 0,
+                "y": 0,
+                "width": 48,
+                "height": 48,
+                "name": "semillaZh",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 48,
+                "y": 0,
+                "width": 48,
+                "height": 48,
+                "name": "broteZh",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 96,
+                "y": 0,
+                "width": 48,
+                "height": 48,
+                "name": "maduroZh",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 144,
+                "y": 0,
+                "width": 48,
+                "height": 48,
+                "name": "cosechaSeca",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 0,
+                "y": 48,
+                "width": 48,
+                "height": 48,
+                "name": "semillaP",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 48,
+                "y": 48,
+                "width": 48,
+                "height": 48,
+                "name": "broteP",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 96,
+                "y": 48,
+                "width": 48,
+                "height": 48,
+                "name": "maduroP",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 0,
+                "y": 96,
+                "width": 48,
+                "height": 48,
+                "name": "semillaT",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 48,
+                "y": 96,
+                "width": 48,
+                "height": 48,
+                "name": "broteT",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 96,
+                "y": 96,
+                "width": 48,
+                "height": 48,
+                "name": "maduroT",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 0,
+                "y": 144,
+                "width": 48,
+                "height": 48,
+                "name": "semillaR",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 48,
+                "y": 144,
+                "width": 48,
+                "height": 48,
+                "name": "broteR",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 96,
+                "y": 144,
+                "width": 48,
+                "height": 48,
+                "name": "maduroR",
+                "description": "",
+                "animation": "default"
+            }
+        ]
+    }
+}

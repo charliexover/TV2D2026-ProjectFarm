@@ -1,0 +1,36 @@
+{
+    "project_name": "RamSprite",
+    "spritesheet_path": "C:/python/TVJ2D_2026_ProyectoGranja/projectFarm/assets/Ram-sheet.png",
+    "character_name": "Ram",
+    "animations": {
+        "default": [
+            {
+                "x": 4,
+                "y": 24,
+                "width": 16,
+                "height": 16,
+                "name": "sprite_0",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 22,
+                "y": 24,
+                "width": 16,
+                "height": 17,
+                "name": "sprite_1",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 40,
+                "y": 23,
+                "width": 16,
+                "height": 18,
+                "name": "sprite_2",
+                "description": "",
+                "animation": "default"
+            }
+        ]
+    }
+}
