@@ -1,0 +1,54 @@
+{
+    "project_name": "AstroSleeping",
+    "spritesheet_path": "../assets/astrozzz.png",
+    "character_name": "AstroSleeping",
+    "animations": {
+        "default": [
+            {
+                "x": 0,
+                "y": 0,
+                "width": 16,
+                "height": 20,
+                "name": "sprite_0",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 17,
+                "y": 0,
+                "width": 16,
+                "height": 20,
+                "name": "sprite_1",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 35,
+                "y": 0,
+                "width": 16,
+                "height": 20,
+                "name": "sprite_2",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 53,
+                "y": 0,
+                "width": 16,
+                "height": 20,
+                "name": "sprite_3",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 72,
+                "y": 0,
+                "width": 16,
+                "height": 20,
+                "name": "sprite_4",
+                "description": "Sugerido",
+                "animation": "default"
+            }
+        ]
+    }
+}

@@ -5,6 +5,7 @@ import pygame
 
 from engine.ui import Inventario
 from projectFarm.scenes.dataCenter_scene import DataCenterScene
+from projectFarm.scenes.expedition_scene import ExpeditionScene
 from projectFarm.scenes.game_scene import GameScene
 from projectFarm.scenes.home_scene import HomeScene
 from projectFarm.scenes.recycle_scene import RecycleScene
@@ -22,7 +23,7 @@ class SceneManager:
         self.escena_actual = None
         self.musica_exterior_cargada = False
         self.ruta_musica_exterior = os.path.join(
-            os.path.dirname(__file__), "..", "assets", "MusicExterior.wav"
+            os.path.dirname(__file__), "..", "assets", "MarsSong.wav"
         )
         self.game_state = GameState()
         self.inventario = Inventario()
@@ -34,6 +35,9 @@ class SceneManager:
             self.cambiar_a_casa,
             self.cambiar_a_reciclaje,
             self.cambiar_a_data_center,
+            self.cambiar_a_expedicion,
+            self.procesar_desmayo,
+            self.completar_desmayo,
         )
         self.casa = HomeScene(
             self.game_state,
@@ -49,12 +53,16 @@ class SceneManager:
             self.cambiar_a_titulo,
         )
         self.dataCenter = DataCenterScene(self.game_state, self.inventario, self.cambiar_a_granja)  
+        self.expedicion = ExpeditionScene(
+            self.game_state, self.inventario, self.cambiar_a_granja
+        )
         self.registrar_escena("granja", self.granja, inicial=False)
         self.registrar_escena("casa", self.casa, inicial=False)
         self.registrar_escena("titulo", self.titulo, inicial=True)
         self.registrar_escena("partidas", self.selector_partidas, inicial=False)
         self.registrar_escena("reciclaje", self.reciclaje, inicial=False)
         self.registrar_escena("dataCenter", self.dataCenter, inicial=False)
+        self.registrar_escena("expedicion", self.expedicion, inicial=False)
 
     def registrar_escena(self, nombre, escena, inicial=False):
         if nombre in self.escenas:
@@ -97,6 +105,29 @@ class SceneManager:
 
     def cambiar_a_data_center(self):
         self.cambiar_escena("dataCenter")
+
+    def cambiar_a_expedicion(self):
+        self.cambiar_escena("expedicion")
+
+    def procesar_desmayo(self):
+        self.game_state.creditos //= 2
+        return self.avanzar_dia_y_guardar()
+
+    def completar_desmayo(self, mensaje_guardado):
+        self.granja.primera_entrada = True
+        self.granja.puerta_reentrada = "casa"
+        self.granja.ultimo_update_oxigeno = None
+        self.granja.segundos_acumulados_oxigeno = 0
+        self.casa.primera_entrada = True
+        self.casa.primera_visita = False
+        self.casa.mensaje_desmayo = (
+            "Por desmayarte, la agencia te descontó el 50% "
+            "de los créditos que poseías."
+        )
+        self.casa.mensaje_desmayo_hasta = pygame.time.get_ticks() + 8000
+        self.casa.mensaje_guardado = mensaje_guardado
+        self.casa.mensaje_guardado_hasta = pygame.time.get_ticks() + 5000
+        self.cambiar_a_casa()
         
     def cambiar_a_titulo(self):
         self.cambiar_escena("titulo")
@@ -116,6 +147,8 @@ class SceneManager:
         self.casa.primera_visita = True
         self.casa.nodo_dialogo_ram = None
         self.casa.mensaje_guardado = None
+        self.casa.mensaje_desmayo = None
+        self.casa.mensaje_desmayo_hasta = 0
         self.granja.primera_entrada = True
         self.granja.puerta_reentrada = "casa"
         self.granja.ultimo_update_oxigeno = None
@@ -146,24 +179,134 @@ class SceneManager:
     def _cargar_progreso(self, partida):
         estado_guardado = partida["game_state"]
         estado_nuevo = GameState()
-        if set(estado_guardado) != set(vars(estado_nuevo)):
+        claves_estado = set(vars(estado_nuevo))
+        claves_opcionales = {
+            "parcela1Comprada",
+            "parcela1Disponible",
+            "parcela2Comprada",
+            "parcela2Disponible",
+            "parcela3Comprada",
+            "parcela3Disponible",
+            "semillaPapaDesbloqueada",
+            "semillaTomateDesbloqueada",
+            "semillaRepolloDesbloqueada",
+            "centroDatosComprado",
+            "centroDatosDisponible",
+            "reciclajeComprado",
+            "reciclajeDisponible",
+            "expedicionesComprado",
+            "expedicionesDisponible",
+            "muestras_tierra",
+            "muestras_atmosfera",
+            "minerales_recogidos",
+            "expedicion_activa",
+            "dia_finalizacion_expedicion",
+            "resultado_ultima_expedicion",
+            "dia_uso_tanque_oeste",
+            "dia_uso_tanque_norte",
+            "dia_uso_tanque_este",
+            "tanqueOxigenoEsteComprado",
+            "tanqueOxigenoOesteComprado",
+            "tanqueOxigenoNorteComprado",
+            "tanqueOxigenoEsteDisponible",
+            "tanqueOxigenoOesteDisponible",
+            "tanqueOxigenoNorteDisponible",
+        }
+        valores_opcionales_por_defecto = {
+            "parcela1Comprada": True,
+            "parcela1Disponible": True,
+            "parcela2Comprada": False,
+            "parcela2Disponible": False,
+            "parcela3Comprada": False,
+            "parcela3Disponible": False,
+            "semillaPapaDesbloqueada": False,
+            "semillaTomateDesbloqueada": False,
+            "semillaRepolloDesbloqueada": False,
+            "centroDatosComprado": False,
+            "centroDatosDisponible": False,
+            "reciclajeComprado": False,
+            "reciclajeDisponible": False,
+            "expedicionesComprado": False,
+            "expedicionesDisponible": False,
+            "muestras_tierra": 0,
+            "muestras_atmosfera": 0,
+            "minerales_recogidos": 0,
+            "expedicion_activa": None,
+            "dia_finalizacion_expedicion": None,
+            "resultado_ultima_expedicion": "",
+            "dia_uso_tanque_oeste": None,
+            "dia_uso_tanque_norte": None,
+            "dia_uso_tanque_este": None,
+            "tanqueOxigenoEsteComprado": False,
+            "tanqueOxigenoOesteComprado": False,
+            "tanqueOxigenoNorteComprado": False,
+            "tanqueOxigenoEsteDisponible": bool(
+                estado_guardado.get("tanqueOxigenoEsteComprado", False)
+            ),
+            "tanqueOxigenoOesteDisponible": bool(
+                estado_guardado.get("tanqueOxigenoOesteComprado", False)
+            ),
+            "tanqueOxigenoNorteDisponible": bool(
+                estado_guardado.get("tanqueOxigenoNorteComprado", False)
+            ),
+        }
+        if (
+            set(estado_guardado) - claves_estado
+            or claves_estado - set(estado_guardado) - claves_opcionales
+        ):
             raise ValueError("El estado guardado no coincide con esta version.")
+        estado_guardado = estado_guardado.copy()
+        for nombre, valor in valores_opcionales_por_defecto.items():
+            estado_guardado.setdefault(nombre, valor)
+        for nombre in ("semilla_papa", "semilla_tomate", "semilla_repollo"):
+            nombre_desbloqueo = {
+                "semilla_papa": "semillaPapaDesbloqueada",
+                "semilla_tomate": "semillaTomateDesbloqueada",
+                "semilla_repollo": "semillaRepolloDesbloqueada",
+            }[nombre]
+            if nombre not in partida["game_state"]:
+                continue
+            cantidad = partida["game_state"][nombre]
+            if type(cantidad) is int and cantidad > 0:
+                estado_guardado[nombre_desbloqueo] = True
         for nombre, valor_inicial in vars(estado_nuevo).items():
             valor = estado_guardado[nombre]
             if valor_inicial is None:
                 tipos_permitidos = (
                     (int, type(None))
                     if nombre
-                    in ("dia_inicio_procesamiento", "dia_mision_antena")
+                    in (
+                        "dia_inicio_procesamiento",
+                        "dia_mision_antena",
+                        "dia_finalizacion_expedicion",
+                        "dia_uso_tanque_oeste",
+                        "dia_uso_tanque_norte",
+                        "dia_uso_tanque_este",
+                    )
                     else (str, type(None))
                 )
                 if type(valor) not in tipos_permitidos:
                     raise ValueError(f"El valor guardado de {nombre} no es valido.")
             elif type(valor) is not type(valor_inicial):
                 raise ValueError(f"El valor guardado de {nombre} no es valido.")
+        if estado_guardado["expedicion_activa"] not in (
+            None,
+            *self.expedicion.EXPEDICIONES,
+        ):
+            raise ValueError("El destino de expedicion guardado no es valido.")
+        if (estado_guardado["expedicion_activa"] is None) != (
+            estado_guardado["dia_finalizacion_expedicion"] is None
+        ):
+            raise ValueError("El estado de la expedicion guardada no es valido.")
 
         datos_parcelas = partida["parcelas"]
-        if len(datos_parcelas) != len(self.granja.parcelas):
+        cantidad_parcelas_iniciales = len(
+            self.granja.parcelas_por_nodo["Parcela1"]
+        )
+        if len(datos_parcelas) not in (
+            cantidad_parcelas_iniciales,
+            len(self.granja.parcelas),
+        ):
             raise ValueError("La cantidad de parcelas guardadas no es valida.")
         slot_inventario = partida["slot_inventario"]
         if (
@@ -201,6 +344,16 @@ class SceneManager:
             if type(seca) is not bool or (seca and planta is None):
                 raise ValueError("El estado de sequia guardado no es valido.")
 
+        datos_parcelas.extend(
+            {
+                "planta": None,
+                "dias_crecimiento": 0,
+                "dia_regado": None,
+                "dia_maduro": None,
+                "seca": False,
+            }
+            for _ in range(len(self.granja.parcelas) - len(datos_parcelas))
+        )
         posiciones_chatarra = partida["chatarra_restante"]
         for posicion in posiciones_chatarra:
             if (
@@ -239,6 +392,7 @@ class SceneManager:
 
     def avanzar_dia_y_guardar(self):
         self.granja.avanzar_dia()
+        self.expedicion.procesar_fin_dia()
         if self.partida_activa is None:
             return "Dia avanzado, pero no hay espacio activo para guardar."
 

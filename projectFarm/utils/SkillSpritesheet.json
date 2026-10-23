@@ -1,0 +1,225 @@
+{
+    "project_name": "SkillSpritesheet",
+    "spritesheet_path": "C:/python/TVJ2D_2026_ProyectoGranja/projectFarm/assets/SkillSpritesheet.png",
+    "character_name": "SkillSpritesheet",
+    "animations": {
+        "default": [
+            {
+                "x": 3,
+                "y": 3,
+                "width": 10,
+                "height": 10,
+                "name": "Parcela_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 19,
+                "width": 10,
+                "height": 10,
+                "name": "Reciclaje_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 35,
+                "width": 10,
+                "height": 10,
+                "name": "CentroDatos_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 51,
+                "width": 10,
+                "height": 10,
+                "name": "Expediciones_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 67,
+                "width": 10,
+                "height": 10,
+                "name": "Correr_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 83,
+                "width": 10,
+                "height": 10,
+                "name": "GuantesReforzados_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 99,
+                "width": 10,
+                "height": 10,
+                "name": "Semillas_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 115,
+                "width": 10,
+                "height": 10,
+                "name": "OxigenoMaximo_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 131,
+                "width": 10,
+                "height": 10,
+                "name": "DescargaDatos_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 147,
+                "width": 10,
+                "height": 10,
+                "name": "TanqueOxigeno_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 163,
+                "width": 10,
+                "height": 10,
+                "name": "CintaReciclaje_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 3,
+                "y": 179,
+                "width": 10,
+                "height": 10,
+                "name": "Creditos_OFF",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 3,
+                "width": 10,
+                "height": 10,
+                "name": "Parcela_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 19,
+                "width": 10,
+                "height": 10,
+                "name": "Reciclaje_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 35,
+                "width": 10,
+                "height": 10,
+                "name": "CentroDatos_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 51,
+                "width": 10,
+                "height": 10,
+                "name": "Expediciones_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 67,
+                "width": 10,
+                "height": 10,
+                "name": "Correr_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 83,
+                "width": 10,
+                "height": 10,
+                "name": "GuantesReforzados_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 99,
+                "width": 10,
+                "height": 10,
+                "name": "Semillas_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 115,
+                "width": 10,
+                "height": 10,
+                "name": "OxigenoMaximo_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 131,
+                "width": 10,
+                "height": 10,
+                "name": "DescargaDatos_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 147,
+                "width": 10,
+                "height": 10,
+                "name": "TanqueOxigeno_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 163,
+                "width": 10,
+                "height": 10,
+                "name": "CintaReciclaje_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            },
+            {
+                "x": 19,
+                "y": 179,
+                "width": 10,
+                "height": 10,
+                "name": "Creditos_ON",
+                "description": "Sugerido",
+                "animation": "default"
+            }
+        ]
+    }
+}

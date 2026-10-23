@@ -5,7 +5,7 @@ CULTIVOS = {
     1: {
         "nombre": "zanahoria",
         "dias_crecimiento": 2,
-        "precio_venta": 2,
+        "precio_venta": 9,
         "cantidad_cosecha": 1,
         "semilla": "semilla_zanahoria",
         "cosecha": "zanahorias_cosechadas",
@@ -19,7 +19,7 @@ CULTIVOS = {
     2: {
         "nombre": "papa",
         "dias_crecimiento": 2,
-        "precio_venta": 2,
+        "precio_venta": 4,
         "cantidad_cosecha": 3,
         "semilla": "semilla_papa",
         "cosecha": "papas_cosechadas",
@@ -29,7 +29,7 @@ CULTIVOS = {
     3: {
         "nombre": "tomate",
         "dias_crecimiento": 2,
-        "precio_venta": 2,
+        "precio_venta": 5,
         "cantidad_cosecha": 5,
         "semilla": "semilla_tomate",
         "cosecha": "tomates_cosechadas",
@@ -39,7 +39,7 @@ CULTIVOS = {
     4: {
         "nombre": "repollo",
         "dias_crecimiento": 2,
-        "precio_venta": 2,
+        "precio_venta": 6,
         "cantidad_cosecha": 1,
         "semilla": "semilla_repollo",
         "cosecha": "repollos_cosechadas",
@@ -153,7 +153,11 @@ class Parcela:
         return True
 
     def dibujar(
-        self, pantalla, dia_actual, sprites_cultivos=None, desplazamiento=(0, 0)
+        self,
+        pantalla,
+        dia_actual,
+        sprites_cultivos=None,
+        desplazamiento=(0, 0),
     ):
         rectangulo = self.rectangulo.move(desplazamiento)
         color = (

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="5">
+ <tileset firstgid="1" source="spritesheetInterior4.tsx"/>
+ <layer id="1" name="Capa de patrones 1" width="10" height="10">
+  <data encoding="csv">
+1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,36,37,38,39,40,
+41,42,43,44,45,46,47,48,49,50,
+51,52,53,54,55,56,57,58,59,60,
+61,62,63,64,65,66,67,68,69,70,
+71,72,73,74,75,76,77,78,79,80,
+81,82,83,84,85,86,87,88,89,90,
+91,92,93,94,95,96,97,98,99,100
+</data>
+ </layer>
+ <objectgroup id="3" name="Npc" visible="0">
+  <object id="2" name="Rover1" x="123.667" y="70.6667">
+   <point/>
+  </object>
+  <object id="3" name="Rover2" x="36" y="103.333">
+   <point/>
+  </object>
+ </objectgroup>
+ <objectgroup id="2" name="Objeto" visible="0">
+  <object id="1" name="Pc" x="64.3333" y="48.6667">
+   <point/>
+  </object>
+  <object id="4" name="Salida" x="44.3333" y="143.667" width="22.3333" height="16"/>
+ </objectgroup>
+</map>

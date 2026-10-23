@@ -82,16 +82,10 @@ class RecycleScene:
 
     def update(self, teclas, limites_pantalla, eventos=()):
         if self.primera_entrada:
-            if self.primera_visita:
-                self.jugador.rectangulo.center = (
-                    limites_pantalla.centerx,
-                    limites_pantalla.centery + 30,
-                )
-                self.primera_visita = False
-            else:
-                self.jugador.rectangulo = self.obtener_posicion_entrada(
-                    limites_pantalla
-                )
+            self.jugador.rectangulo = self.obtener_posicion_entrada(
+                limites_pantalla
+            )
+            self.primera_visita = False
             self.primera_entrada = False
 
         rect_previo = self.jugador.rectangulo.copy()

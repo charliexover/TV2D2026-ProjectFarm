@@ -14,17 +14,25 @@ class Jugador:
     def __init__(self, x=100, y=100):
         self.rectangulo = pygame.Rect(x, y, 50, 50)
         self.velocidad = 4
-        spritesheet_json = Path(__file__).parent / "utils" / "AstroSpritesheet.json"
+        spritesheet_json = (
+            Path(__file__).parent / "utils" / "AstroSpritesheetNew.json"
+        )
         spritesheet = Spritesheet(str(spritesheet_json))
         self.sprites = {
             nombre: pygame.transform.scale(
                 spritesheet.get_sprite(nombre), self.TAMANO_SPRITE
             )
-            for nombre in ("Idle", "Blink", "Walk")
+            for nombre in ("Idle", "Blink")
         }
+        self.sprites_walk = [
+            pygame.transform.scale(
+                spritesheet.get_sprite(nombre), self.TAMANO_SPRITE
+            )
+            for nombre in ("Walk_1", "Walk_2")
+        ]
         self.sprites_izquierda = {
             id(sprite): pygame.transform.flip(sprite, True, False)
-            for sprite in self.sprites.values()
+            for sprite in (*self.sprites.values(), *self.sprites_walk)
         }
         self.sprite = self.sprites["Idle"]
         self.mirando_izquierda = False
@@ -32,7 +40,7 @@ class Jugador:
         self.proximo_cambio_paso = 0
         self.parpadeo_hasta = None
         self.moviendose = False
-        self.paso_walk = True
+        self.paso_walk = 0
 
     def actualizar(self, teclas):
         desplazamiento_x = 0
@@ -53,13 +61,13 @@ class Jugador:
 
         if desplazamiento_x or desplazamiento_y:
             if not self.moviendose:
-                self.paso_walk = True
+                self.paso_walk = 0
                 self.proximo_cambio_paso = ahora + self.INTERVALO_PASO
                 self.moviendose = True
             elif ahora >= self.proximo_cambio_paso:
-                self.paso_walk = not self.paso_walk
+                self.paso_walk = (self.paso_walk + 1) % len(self.sprites_walk)
                 self.proximo_cambio_paso = ahora + self.INTERVALO_PASO
-            self.sprite = self.sprites["Walk" if self.paso_walk else "Idle"]
+            self.sprite = self.sprites_walk[self.paso_walk]
             self.parpadeo_hasta = None
             self.proximo_parpadeo = ahora + self.INTERVALO_PARPADEO
         else:

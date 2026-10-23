@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="16" tileheight="16" infinite="0" nextlayerid="3" nextobjectid="23">
+ <tileset firstgid="1" source="SkillTree.tsx"/>
+ <layer id="1" name="Skilltree" width="10" height="10">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+1,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <objectgroup id="2" name="Nodos">
+  <object id="1" name="Parcela1" x="80.6667" y="99">
+   <point/>
+  </object>
+  <object id="2" name="GuantesReforzados" x="68.3333" y="116.333">
+   <point/>
+  </object>
+  <object id="3" name="TanqueOxigeno1" x="93.6667" y="116.333">
+   <point/>
+  </object>
+  <object id="4" name="CentroDatos" x="64" y="84.3333">
+   <point/>
+  </object>
+  <object id="5" name="Expediciones" x="79.3333" y="76">
+   <point/>
+  </object>
+  <object id="6" name="Reciclaje" x="96.3333" y="84.6666">
+   <point/>
+  </object>
+  <object id="7" name="SemillaPapa" x="55" y="129.333">
+   <point/>
+  </object>
+  <object id="8" name="SemillaTomate" x="41" y="130">
+   <point/>
+  </object>
+  <object id="10" name="SemillaRepollo" x="26.3334" y="129.333">
+   <point/>
+  </object>
+  <object id="13" name="Parcela2" x="79.3333" y="57.3333">
+   <point/>
+  </object>
+  <object id="14" name="Parcela3" x="67" y="48">
+   <point/>
+  </object>
+  <object id="15" name="CintaReciclaje1" x="112.666" y="68">
+   <point/>
+  </object>
+  <object id="16" name="CintaReciclaje2" x="127.667" y="57">
+   <point/>
+  </object>
+  <object id="17" name="DescargaDatos1" x="47.3333" y="76.3333">
+   <point/>
+  </object>
+  <object id="18" name="DescargaDatos2" x="32" y="61">
+   <point/>
+  </object>
+  <object id="19" name="TanqueOxigeno2" x="111" y="128.667">
+   <point/>
+  </object>
+  <object id="20" name="TanqueOxigeno3" x="128.333" y="117">
+   <point/>
+  </object>
+  <object id="21" name="OxigenoMaximo" x="38.3333" y="104.334">
+   <point/>
+  </object>
+ </objectgroup>
+</map>

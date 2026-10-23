@@ -13,28 +13,70 @@ class Inventario:
 		7: 3,
 		8: 4,
 	}
-	ETIQUETAS_SEMILLAS = {
-		1: "Za",
-		2: "Pa",
-		3: "To",
-		4: "Re",
+	DESBLOQUEOS_SEMILLAS = {
+		2: "semillaPapaDesbloqueada",
+		3: "semillaTomateDesbloqueada",
+		4: "semillaRepolloDesbloqueada",
 	}
 
-	def __init__(self, cantidad_casillas=9, tamano_casilla=48, separacion=5, separacion_grupo=12, margen_inferior=16):
+	def __init__(self, cantidad_casillas=9, tamano_casilla=45, separacion=5, separacion_grupo=12, margen_inferior=0):
 		self.cantidad_casillas = cantidad_casillas
 		self.tamano_casilla = tamano_casilla
 		self.separacion = separacion
 		self.separacion_grupo = separacion_grupo
 		self.margen_inferior = margen_inferior
-		self.fuente_item = pygame.font.Font(None, 22)
 		self.fuente_cantidad = pygame.font.Font(None, 18)
 		self.slot_seleccionado = 0
+		ruta_fondo_inventario = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"Inventory.png",
+		)
+		fondo_inventario = pygame.image.load(
+			os.path.normpath(ruta_fondo_inventario)
+		).convert_alpha()
+		recorte_fondo = fondo_inventario.get_bounding_rect()
+		self.fondo_inventario = fondo_inventario.subsurface(recorte_fondo).copy()
 		ruta_mano = os.path.join(
 			os.path.dirname(__file__), "..", "projectFarm", "assets", "handIcon.png"
 		)
 		self.sprite_mano = pygame.transform.scale(
 			pygame.image.load(ruta_mano).convert_alpha(), (40, 40)
 		)
+		ruta_mano_reforzada = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"handIcon2.png",
+		)
+		self.sprite_mano_reforzada = pygame.transform.scale(
+			pygame.image.load(ruta_mano_reforzada).convert_alpha(), (40, 40)
+		)
+		ruta_assets = os.path.normpath(
+			os.path.join(os.path.dirname(__file__), "..", "projectFarm", "assets")
+		)
+		self.sprites_semillas = {
+			1: self._cargar_sprite_inventario(
+				ruta_assets, "zanahoriaPack.png"
+			),
+			2: self._cargar_sprite_inventario(ruta_assets, "papaPack.png"),
+			3: self._cargar_sprite_inventario(ruta_assets, "tomatePack.png"),
+			4: self._cargar_sprite_inventario(
+				ruta_assets, "repolloPack.png"
+			),
+		}
+		self.sprite_regadera = self._cargar_sprite_inventario(
+			ruta_assets, "regadera.png"
+		)
+
+	@staticmethod
+	def _cargar_sprite_inventario(ruta_assets, nombre_archivo):
+		ruta_sprite = os.path.join(ruta_assets, nombre_archivo)
+		sprite = pygame.image.load(ruta_sprite).convert_alpha()
+		return pygame.transform.scale(sprite, (36, 36))
 
 	def obtener_rectangulos(self, ancho_pantalla, alto_pantalla):
 		cortes = [corte for corte in (1, 5) if corte < self.cantidad_casillas]
@@ -84,8 +126,15 @@ class Inventario:
 
 	def dibujar(self, pantalla, game_state):
 		casillas = self.obtener_rectangulos(pantalla.get_width(), pantalla.get_height())
+		if casillas:
+			contenedor_casillas = casillas[0].unionall(casillas[1:])
+			fondo_rect = contenedor_casillas.inflate(24, 16)
+			fondo = pygame.transform.scale(
+				self.fondo_inventario, fondo_rect.size
+			)
+			pantalla.blit(fondo, fondo_rect)
+
 		for indice, casilla in enumerate(casillas):
-			x, y = casilla.topleft
 			if indice == self.slot_seleccionado:
 				self.dibujar_fondo_seleccionado(pantalla, casilla)
 				pygame.draw.rect(pantalla, (112, 79, 29), casilla, 3)
@@ -94,9 +143,14 @@ class Inventario:
 				pygame.draw.rect(pantalla, (60, 65, 48), casilla, 2)
 
 			if indice == self.SLOT_MANO:
+				sprite_mano = (
+					self.sprite_mano_reforzada
+					if game_state.guanteReforzado
+					else self.sprite_mano
+				)
 				pantalla.blit(
-					self.sprite_mano,
-					self.sprite_mano.get_rect(center=casilla.center),
+					sprite_mano,
+					sprite_mano.get_rect(center=casilla.center),
 				)
 			elif indice in self.SLOTS_SEMILLAS:
 				tipo_cultivo = self.SLOTS_SEMILLAS[indice]
@@ -107,37 +161,40 @@ class Inventario:
 					"semilla_repollo",
 				)[tipo_cultivo - 1]
 				cantidad_semillas = getattr(game_state, semilla)
-				if cantidad_semillas <= 0:
+				desbloqueo = self.DESBLOQUEOS_SEMILLAS.get(tipo_cultivo)
+				if (
+					cantidad_semillas <= 0
+					and desbloqueo is None
+				):
 					continue
-				icono = self.fuente_item.render(
-					self.ETIQUETAS_SEMILLAS[tipo_cultivo], True, (45, 55, 36)
+				if desbloqueo is not None and not getattr(
+					game_state, desbloqueo
+				):
+					continue
+				sprite_semilla = self.sprites_semillas[tipo_cultivo]
+				pantalla.blit(
+					sprite_semilla,
+					sprite_semilla.get_rect(center=casilla.center),
 				)
-				icono_rect = icono.get_rect(center=(casilla.centerx, casilla.centery - 4))
-				pantalla.blit(icono, icono_rect)
 				cantidad = self.fuente_cantidad.render(
-					str(cantidad_semillas), True, (25, 25, 20)
+					str(cantidad_semillas), True, (255, 255, 255)
 				)
 				cantidad_rect = cantidad.get_rect(
-					bottomright=(casilla.right - 3, casilla.bottom - 2)
+					topright=(casilla.right - 2, casilla.top + 1)
+				)
+				sombra_cantidad = self.fuente_cantidad.render(
+					str(cantidad_semillas), True, (25, 25, 20)
+				)
+				pantalla.blit(
+					sombra_cantidad,
+					cantidad_rect.move(1, 1),
 				)
 				pantalla.blit(cantidad, cantidad_rect)
 			elif indice == self.SLOT_REGADERA:
-				color_regadera = (83, 145, 153)
-				borde_regadera = (45, 75, 78)
-				cuerpo = pygame.Rect(x + 15, y + 20, 18, 15)
-				pygame.draw.rect(pantalla, color_regadera, cuerpo)
-				pygame.draw.rect(pantalla, borde_regadera, cuerpo, 2)
-				pygame.draw.lines(
-					pantalla,
-					borde_regadera,
-					False,
-					[(x + 15, y + 22), (x + 10, y + 22), (x + 10, y + 32), (x + 15, y + 32)],
-					2,
+				pantalla.blit(
+					self.sprite_regadera,
+					self.sprite_regadera.get_rect(center=casilla.center),
 				)
-				pico = [(x + 31, y + 23), (x + 39, y + 16), (x + 42, y + 18), (x + 33, y + 28)]
-				pygame.draw.polygon(pantalla, color_regadera, pico)
-				pygame.draw.polygon(pantalla, borde_regadera, pico, 2)
-				pygame.draw.circle(pantalla, borde_regadera, (x + 41, y + 16), 3, 2)
 
 
 class InterfazEstado:

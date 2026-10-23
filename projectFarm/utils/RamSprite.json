@@ -5,28 +5,28 @@
     "animations": {
         "default": [
             {
-                "x": 4,
-                "y": 24,
+                "x": 0,
+                "y": 0,
                 "width": 16,
-                "height": 16,
+                "height": 19,
                 "name": "sprite_0",
                 "description": "",
                 "animation": "default"
             },
             {
-                "x": 22,
-                "y": 24,
+                "x": 16,
+                "y": 0,
                 "width": 16,
-                "height": 17,
+                "height": 19,
                 "name": "sprite_1",
                 "description": "",
                 "animation": "default"
             },
             {
-                "x": 40,
-                "y": 23,
+                "x": 32,
+                "y": 0,
                 "width": 16,
-                "height": 18,
+                "height": 19,
                 "name": "sprite_2",
                 "description": "",
                 "animation": "default"
