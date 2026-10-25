@@ -29,8 +29,9 @@ class RecycleScene:
         ]
         self.materiales_entrada = pygame.Rect(310, 330, 44, 44)
         self.materiales_salida = pygame.Rect(490, 330, 44, 44)
+        self.cajas = pygame.Rect(200,100,500,200)
         self.cuadrados.extend(
-            (self.materiales_entrada, self.materiales_salida)
+            (self.materiales_entrada, self.materiales_salida, self.cajas)
         )
         self.colores_cuadrados = [
             (255, 120, 120),
@@ -39,6 +40,7 @@ class RecycleScene:
             (255, 210, 120),
             (255, 210, 120),
             (255, 210, 120),
+            (180, 210, 255),
             (180, 210, 255),
         ]
         self.fuente = pygame.font.Font(None, 28)
@@ -113,7 +115,7 @@ class RecycleScene:
             ):
                 reproducir_sonido_interaccion()
                 self.game_state.chatarra_en_proceso = min(
-                    5, self.game_state.chatarra
+                    20, self.game_state.chatarra
                 )
                 self.game_state.chatarra -= self.game_state.chatarra_en_proceso
                 self.game_state.estado_procesamiento = "procesandose"
@@ -147,9 +149,9 @@ class RecycleScene:
         else:
             pantalla.fill((99, 60, 58))
 
-        #for i, cuadrado in enumerate(self.cuadrados):
-            #pygame.draw.rect(pantalla, self.colores_cuadrados[i], cuadrado)
-            #pygame.draw.rect(pantalla, (30, 30, 30), cuadrado, 2)
+        """ for i, cuadrado in enumerate(self.cuadrados):
+            pygame.draw.rect(pantalla, self.colores_cuadrados[i], cuadrado)
+            pygame.draw.rect(pantalla, (30, 30, 30), cuadrado, 2) """
 
         self.interfaz_estado.dibujar(
             pantalla,
@@ -201,7 +203,7 @@ class RecycleScene:
             and self.game_state.estado_procesamiento != "procesandose"
         ):
             texto_interaccion = (
-                "E: procesar hasta 5 de chatarra"
+                "E: procesar hasta 20 de chatarra"
                 if self.game_state.chatarra > 0
                 else "Necesitas chatarra"
             )

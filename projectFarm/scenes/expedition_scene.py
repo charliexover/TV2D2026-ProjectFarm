@@ -8,7 +8,8 @@ from pytmx.util_pygame import load_pygame
 
 from engine.audio import reproducir_sonido_interaccion
 from engine.ui import InterfazEstado
-from projectFarm.entities import Jugador
+from projectFarm.entities import Jugador, Rover
+from projectFarm.recompensasExpe import SistemaRecompensas
 
 
 class ExpeditionScene:
@@ -29,7 +30,7 @@ class ExpeditionScene:
             "dias": 2,
             "coste": 30,
             "probabilidad_exito": 0.85,
-            "recompensas": (6, 4, 2),
+            "recompensas": (25, 5, 2),
         },
         "marineris": {
             "nombre": "Valles Marineris",
@@ -37,15 +38,15 @@ class ExpeditionScene:
             "dias": 4,
             "coste": 70,
             "probabilidad_exito": 0.70,
-            "recompensas": (12, 8, 6),
+            "recompensas": (15, 50, 5),
         },
         "olimpo": {
             "nombre": "Monte Olimpo",
             "tipo": "larga",
-            "dias": 7,
+            "dias": 6,
             "coste": 150,
             "probabilidad_exito": 0.55,
-            "recompensas": (20, 14, 10),
+            "recompensas": (10, 20, 50),
         },
     }
     DESTINO_POR_LUGAR = {
@@ -60,6 +61,10 @@ class ExpeditionScene:
         self.inventario = inventario
         self.interfaz_estado = InterfazEstado()
         self.jugador = Jugador()
+        self.sistema_recompensas = SistemaRecompensas()
+        self.mensaje_rover = ""
+        self.tiempo_mensaje_rover = 0
+        self.DURACION_MENSAJE_ROVER = 4000  # 4 segundos
         self.primera_entrada = True
         self.al_salir = al_salir
         self.fuente = pygame.font.Font(None, 28)
@@ -77,6 +82,9 @@ class ExpeditionScene:
         self.fondo = self._renderizar_mapa(mapa)
         self.salida_mapa = self._cargar_salida(ruta_mapa)
         self.pc_mapa = self._cargar_objeto_punto(ruta_mapa, "Pc")
+        self.rover = Rover(
+            *self._cargar_objeto_punto(ruta_mapa, "Rover1", "Npc")
+        )
         self.colisiones_mapa = self._cargar_colisiones(
             ruta_mapa, mapa.tilewidth
         )
@@ -85,18 +93,20 @@ class ExpeditionScene:
         self.punto_seleccionado = None
         self._cargar_monitor()
 
-    def _cargar_objeto_punto(self, ruta_mapa, nombre):
+    def _cargar_objeto_punto(self, ruta_mapa, nombre, nombre_capa="Objeto"):
         raiz_mapa = ET.parse(ruta_mapa).getroot()
         capa_objetos = next(
             (
                 capa
                 for capa in raiz_mapa.findall("objectgroup")
-                if capa.attrib.get("name") == "Objeto"
+                if capa.attrib.get("name") == nombre_capa
             ),
             None,
         )
         if capa_objetos is None:
-            raise ValueError("No se encontró la capa de objetos 'Objeto'.")
+            raise ValueError(
+                f"No se encontró la capa de objetos '{nombre_capa}'."
+            )
 
         objeto = next(
             (
@@ -108,7 +118,8 @@ class ExpeditionScene:
         )
         if objeto is None:
             raise ValueError(
-                f"No se encontró el objeto '{nombre}' en la capa 'Objeto'."
+                f"No se encontró el objeto '{nombre}' "
+                f"en la capa '{nombre_capa}'."
             )
 
         return (
@@ -369,6 +380,16 @@ class ExpeditionScene:
             )
             self.primera_entrada = False
 
+        if self.mensaje_rover:
+            ahora = pygame.time.get_ticks()
+
+            if ahora - self.tiempo_mensaje_rover >= self.DURACION_MENSAJE_ROVER:
+                self.mensaje_rover = ""
+
+        # Zona de interacción con el Rover, en coordenadas de pantalla.
+        zona_rover = self.rover.rectangulo.move(rect_fondo.topleft)
+        zona_rover = zona_rover.inflate(30, 30)
+
         pc = pygame.Rect(
             (0, 0),
             (self.TAMANO_ZONA_INTERACCION_PC,) * 2,
@@ -454,24 +475,67 @@ class ExpeditionScene:
             return
 
         for evento in eventos:
-            if (
-                evento.type == pygame.KEYDOWN
-                and evento.key == pygame.K_e
-                and self.jugador.rectangulo.colliderect(area_interaccion_pc)
-            ):
+            if evento.type != pygame.KEYDOWN or evento.key != pygame.K_e:
+                continue
+
+            # Interacción con el PC.
+            if self.jugador.rectangulo.colliderect(area_interaccion_pc):
                 reproducir_sonido_interaccion()
                 self.monitor_abierto = True
                 self.arrastrando_mapa = False
                 return
 
+            # Interacción con el Rover.
+            if self.jugador.rectangulo.colliderect(zona_rover):
+                reproducir_sonido_interaccion()
+
+                creditos, hitos = (
+                    self.sistema_recompensas
+                    .reclamar_recompensas_rover(self.game_state)
+                )
+
+                if creditos > 0:
+                    mensaje = (
+                        f"¡Buen trabajo, la agencia te condece {creditos} créditos por las muestras recogidas! "
+                    )
+                else:
+                    mensaje = (
+                        "Todo normal por aqui. "
+                    )
+
+                self.mensaje_rover = mensaje
+                self.tiempo_mensaje_rover = pygame.time.get_ticks()
+
         rect_previo = self.jugador.rectangulo.copy()
-        self.jugador.actualizar(teclas)
-        self.jugador.rectangulo.clamp_ip(rect_fondo)
-        rect_destino = self.jugador.rectangulo.copy()
+
+        # Colisiones del mapa en coordenadas de pantalla.
         colisiones = [
             colision.move(rect_fondo.topleft)
             for colision in self.colisiones_mapa
         ]
+
+        # Convertir la posición del jugador a coordenadas locales del mapa.
+        rect_jugador_mapa = self.jugador.rectangulo.move(
+            -rect_fondo.left,
+            -rect_fondo.top,
+        )
+
+        # Rover trabaja con coordenadas locales del mapa.
+        self.rover.actualizar(
+            self.colisiones_mapa,
+            (rect_jugador_mapa,),
+        )
+
+        # Añadir el Rover a las colisiones del jugador,
+        # utilizando coordenadas de pantalla.
+        colisiones.append(
+            self.rover.rectangulo.move(rect_fondo.topleft)
+        )
+
+        self.jugador.actualizar(teclas)
+        self.jugador.rectangulo.clamp_ip(rect_fondo)
+
+        rect_destino = self.jugador.rectangulo.copy()
 
         self.jugador.rectangulo.x = rect_previo.x
         if rect_destino.y != rect_previo.y:
@@ -549,8 +613,24 @@ class ExpeditionScene:
             self.interfaz_estado.dibujar(pantalla, self.game_state)
             return
 
+        self.rover.dibujar(pantalla, rect_fondo.topleft)
         self.jugador.dibujar(pantalla)
         self.interfaz_estado.dibujar(pantalla, self.game_state)
+
+        if self.mensaje_rover:
+            texto = self.fuente.render(
+                self.mensaje_rover,
+                True,
+                (255, 255, 255)
+            )
+
+            fondo_texto = texto.get_rect(
+                midbottom=(pantalla.get_width() // 2,
+                        pantalla.get_height() - 30)
+            ).inflate(20, 12)
+
+            pygame.draw.rect(pantalla, (30, 30, 30), fondo_texto)
+            pantalla.blit(texto, texto.get_rect(center=fondo_texto.center))
 
         salida = self._obtener_rectangulo_salida(rect_fondo.topleft)
         if self.jugador.rectangulo.colliderect(salida):
@@ -591,7 +671,7 @@ class ExpeditionScene:
         pygame.draw.rect(pantalla, (0, 0, 0), panel)
 
         muestras = (
-            f"Muestras: tierra {self.game_state.muestras_tierra} | "
+            f"Muestras Totales: tierra {self.game_state.muestras_tierra} | "
             f"atmósfera {self.game_state.muestras_atmosfera} | "
             f"minerales {self.game_state.minerales_recogidos}"
         )
@@ -602,7 +682,7 @@ class ExpeditionScene:
 
         destino_activo = self.game_state.expedicion_activa
         if destino_activo is None:
-            estado = "Rover disponible"
+            estado = "Rover disponible para enviar"
         else:
             expedicion_activa = self.EXPEDICIONES[destino_activo]
             dias_restantes = max(
@@ -644,13 +724,12 @@ class ExpeditionScene:
         expedicion = self.EXPEDICIONES[destino_seleccionado]
         resumen = (
             f"{expedicion['nombre']} ({expedicion['tipo']}): "
-            f"{expedicion['dias']} días, {expedicion['coste']} cr., "
-            f"{expedicion['probabilidad_exito']:.0%} éxito"
+            f"{expedicion['dias']} días, {expedicion['coste']} créditos "
         )
         recompensa = expedicion["recompensas"]
         resumen_recompensa = (
-            f"Éxito: {recompensa[0]} tierra / {recompensa[1]} atmósfera / "
-            f"{recompensa[2]} minerales; fallo: mitad."
+            f"Posible muestras: {recompensa[0]} tierra / {recompensa[1]} atmósfera / "
+            f"{recompensa[2]} minerales"
         )
         pantalla.blit(
             self.fuente_monitor.render(resumen, True, (255, 255, 255)),
@@ -675,9 +754,6 @@ class ExpeditionScene:
             boton_enviar,
             "Confirmar envío",
             puede_enviar,
-        )
-        self._dibujar_boton(
-            pantalla, boton_cancelar, "Cancelar", True
         )
 
     def _dibujar_boton(self, pantalla, rectangulo, texto, habilitado):

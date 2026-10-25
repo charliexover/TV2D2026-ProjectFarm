@@ -1,6 +1,6 @@
 {
     "project_name": "CosechasSpritesheet",
-    "spritesheet_path": "C:/python/TVJ2D_2026_ProyectoGranja/projectFarm/assets/CosechasSprite.png",
+    "spritesheet_path": "../assets/CosechasSprite.png",
     "character_name": "CosechasSpritesheet",
     "animations": {
         "default": [

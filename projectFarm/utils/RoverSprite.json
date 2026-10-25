@@ -1,0 +1,45 @@
+{
+    "project_name": "RoverSprite",
+    "spritesheet_path": "../assets/RoverSprites.png",
+    "character_name": "Rover",
+    "animations": {
+        "default": [
+            {
+                "x": 0,
+                "y": 0,
+                "width": 16,
+                "height": 16,
+                "name": "sprite_0",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 16,
+                "y": 0,
+                "width": 16,
+                "height": 16,
+                "name": "sprite_1",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 32,
+                "y": 0,
+                "width": 16,
+                "height": 16,
+                "name": "sprite_2",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 48,
+                "y": 0,
+                "width": 16,
+                "height": 16,
+                "name": "sprite_3",
+                "description": "",
+                "animation": "default"
+            }
+        ]
+    }
+}

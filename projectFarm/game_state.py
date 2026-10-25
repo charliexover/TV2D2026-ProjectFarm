@@ -1,5 +1,8 @@
 class GameState:
     def __init__(self):
+        self.nombre_jugador = ""
+        self.tipo_mascota = ""
+        self.nombre_mascota = ""
         self.semilla_zanahoria = 9
         self.semilla_papa = 0
         self.semilla_tomate = 0
@@ -19,9 +22,9 @@ class GameState:
         self.tanqueOxigenoEsteDisponible = False
         self.tanqueOxigenoOesteDisponible = False
         self.tanqueOxigenoNorteDisponible = False
-        self.creditos = 1000
+        self.creditos = 0
         self.chatarra = 0
-        self.materiales = 500
+        self.materiales = 0
         self.parcela1Comprada = True
         self.parcela1Disponible = True
         self.parcela2Comprada = False
@@ -44,6 +47,7 @@ class GameState:
         self.muestras_tierra = 0
         self.muestras_atmosfera = 0
         self.minerales_recogidos = 0
+        self.hitos_rover_reclamados = []
         self.expedicion_activa = None
         self.dia_finalizacion_expedicion = None
         self.resultado_ultima_expedicion = ""
@@ -51,3 +55,5 @@ class GameState:
         self.antena_objetivo = None
         self.antena_encontrada = False
         self.datos_antena_enviados = False
+        self.correos_recibidos = []
+        self.correos_leidos = []

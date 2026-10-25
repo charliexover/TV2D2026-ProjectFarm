@@ -1,6 +1,6 @@
 {
     "project_name": "SkillSpritesheet",
-    "spritesheet_path": "C:/python/TVJ2D_2026_ProyectoGranja/projectFarm/assets/SkillSpritesheet.png",
+    "spritesheet_path": "../assets/SkillSpritesheet.png",
     "character_name": "SkillSpritesheet",
     "animations": {
         "default": [

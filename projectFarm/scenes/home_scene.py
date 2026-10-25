@@ -8,7 +8,7 @@ from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado
 from projectFarm.entities import Jugador
 from projectFarm.farm import CULTIVOS
-from projectFarm.npcDialog import DIALOGOS_NPC, DialogoNPC
+from projectFarm.mails import GestorCorreos
 
 
 class HomeScene:
@@ -17,15 +17,18 @@ class HomeScene:
     DURACION_CARTEL_DIA = 2100
     INTERVALO_FRAME_SUENO = 250
     PRECIOS_SEMILLAS = {
-        1: 5,
-        2: 8,
-        3: 12,
-        4: 15,
+        1: 2,
+        2: 5,
+        3: 7,
+        4: 10,
     }
 
     def __init__(self, game_state, inventario, al_salir_casa, al_avanzar_dia):
         self.name = "Home Scene"
         self.game_state = game_state
+        self.gestor_correos = GestorCorreos(game_state)
+        self.gestor_correos.actualizar_dia(game_state.dia_actual)
+        self.correo_seleccionado = None
         self.interfaz_estado = InterfazEstado()
         self.jugador = Jugador()
         self.primera_entrada = True
@@ -45,7 +48,6 @@ class HomeScene:
         self.colores_cuadrados = [(255, 120, 120), (120, 200, 255), (120, 255, 170), (255, 210, 120), (255, 210, 120)]
         self.fuente = pygame.font.Font(None, 28)
         self.fuente_menu_pc = pygame.font.Font(None, 26)
-        self.dialogo_ram = DialogoNPC(DIALOGOS_NPC["Ram"], self.fuente)
         self.menu_pc = None
         self.mensaje_pc = None
         self.mensaje_pc_hasta = 0
@@ -69,29 +71,13 @@ class HomeScene:
         self.transicion_sueno_inicio = None
         self.dia_mostrado = None
         self.dia_avanzado_durante_sueno = False
-        ruta_ram = os.path.join(
-            os.path.dirname(__file__), "..", "utils", "RamSprite.json"
-        )
-        spritesheet_ram = Spritesheet(ruta_ram)
-        self.sprites_ram = [
-            pygame.transform.scale(sprite, (48, 54))
-            for sprite in spritesheet_ram.get_animation_frames("default")
-        ]
-        self.npc_rectangulo = pygame.Rect(250, 210, 48, 48)
-        self.sprite_ram_actual = 0
-        self.proximo_cambio_sprite_ram = pygame.time.get_ticks() + 350
+        
         self.mensaje_guardado = None
         self.mensaje_guardado_hasta = 0
         self.mensaje_desmayo = None
         self.mensaje_desmayo_hasta = 0
 
-    @property
-    def nodo_dialogo_ram(self):
-        return self.dialogo_ram.nodo_actual
-
-    @nodo_dialogo_ram.setter
-    def nodo_dialogo_ram(self, nodo):
-        self.dialogo_ram.nodo_actual = nodo
+   
 
     def _cargar_fondo(self):
         ruta_fondo = os.path.join(
@@ -157,12 +143,20 @@ class HomeScene:
         return semillas
 
     def _obtener_rectangulo_menu_pc(self, limites_pantalla):
-        filas = (
-            2
-            if self.menu_pc == "principal"
-            else len(self._obtener_semillas_disponibles()) + 1
-        )
-        alto = 136 + filas * 44
+        if self.menu_pc == "leer_correo":
+            alto = 360
+        elif self.menu_pc == "correos":
+            filas = len(self.gestor_correos.obtener_correos()) + 1
+            alto = 136 + max(filas, 1) * 44
+        elif self.menu_pc == "principal":
+            filas = 3
+            alto = 136 + filas * 44
+        else:
+            filas = len(self._obtener_semillas_disponibles()) + 1
+            alto = 136 + filas * 44
+
+        alto = min(alto, limites_pantalla.height - 20)
+
         return pygame.Rect(
             0,
             0,
@@ -178,6 +172,40 @@ class HomeScene:
             return [
                 ("Comprar semillas", "comprar"),
                 ("Vender cosechas", "vender"),
+                (
+                    f"Leer correos ({self.gestor_correos.cantidad_no_leidos()})",
+                    "correos",
+                ),
+            ]
+
+        if self.menu_pc == "correos":
+            opciones = []
+
+            for correo in self.gestor_correos.obtener_correos():
+                identificador = correo["id"]
+
+                indicador = (
+                    "[Nuevo] "
+                    if not self.gestor_correos.esta_leido(identificador)
+                    else ""
+                )
+
+                opciones.append(
+                    (
+                        f"{indicador}{correo['asunto']}",
+                        f"correo:{identificador}",
+                    )
+                )
+
+            if not opciones:
+                opciones.append(("No tienes correos", "sin_correos"))
+
+            opciones.append(("Volver", "volver"))
+            return opciones
+
+        if self.menu_pc == "leer_correo":
+            return [
+                ("Volver a la bandeja", "volver_bandeja"),
             ]
 
         opciones = [
@@ -189,6 +217,7 @@ class HomeScene:
             )
             for tipo, cultivo in self._obtener_semillas_disponibles()
         ]
+
         opciones.append(("Volver", "volver"))
         return opciones
 
@@ -210,6 +239,23 @@ class HomeScene:
         ]
 
     def _procesar_click_menu_pc(self, posicion, limites_pantalla):
+        if self.menu_pc == "leer_correo":
+            rect_dialogo = self._obtener_rectangulo_menu_pc(
+                limites_pantalla
+            )
+
+            rect_volver = pygame.Rect(
+                rect_dialogo.left + 24,
+                rect_dialogo.bottom - 52,
+                rect_dialogo.width - 48,
+                36,
+            )
+
+            if rect_volver.collidepoint(posicion):
+                self.menu_pc = "correos"
+                self.correo_seleccionado = None
+
+            return
         for accion, rectangulo in self._obtener_rectangulos_opciones_menu_pc(
             limites_pantalla
         ):
@@ -219,6 +265,7 @@ class HomeScene:
             if accion == "comprar":
                 self.menu_pc = "semillas"
                 self.mensaje_pc = None
+
             elif accion == "vender":
                 creditos = self.vender_zanahorias()
                 self._mostrar_mensaje_pc(
@@ -227,11 +274,45 @@ class HomeScene:
                     else "No tienes cosechas para vender."
                 )
                 self.menu_pc = None
-            elif accion == "volver":
-                self.menu_pc = "principal"
+
+            elif accion == "correos":
+                self.menu_pc = "correos"
                 self.mensaje_pc = None
+
+            elif isinstance(accion, str) and accion.startswith("correo:"):
+                identificador = accion.split(":", 1)[1]
+
+                self.correo_seleccionado = next(
+                    (
+                        correo
+                        for correo in self.gestor_correos.obtener_correos()
+                        if correo["id"] == identificador
+                    ),
+                    None,
+                )
+
+                if self.correo_seleccionado is not None:
+                    self.gestor_correos.marcar_leido(identificador)
+                    self.menu_pc = "leer_correo"
+
+            elif accion == "volver_bandeja":
+                self.menu_pc = "correos"
+                self.correo_seleccionado = None
+
+            elif accion == "sin_correos":
+                pass
+
+            elif accion == "volver":
+                if self.menu_pc == "semillas":
+                    self.menu_pc = "principal"
+                elif self.menu_pc == "correos":
+                    self.menu_pc = "principal"
+
+                self.mensaje_pc = None
+
             else:
                 self._comprar_semilla(accion)
+
             return
 
     def _comprar_semilla(self, tipo_cultivo):
@@ -273,18 +354,53 @@ class HomeScene:
         pygame.draw.rect(pantalla, (0, 0, 0), rect_dialogo)
         pygame.draw.rect(pantalla, (255, 255, 255), rect_dialogo, 2)
 
-        titulo = (
-            "Terminal de la colonia"
-            if self.menu_pc == "principal"
-            else "Comprar semillas (una por clic)"
-        )
+        if self.menu_pc == "principal":
+            titulo = "Terminal de la colonia"
+        elif self.menu_pc == "semillas":
+            titulo = "Comprar semillas"
+        elif self.menu_pc == "correos":
+            titulo = "Bandeja de entrada"
+        else:
+            titulo = "Correo"
         texto_titulo = self.fuente.render(titulo, True, (255, 255, 255))
-        pantalla.blit(
-            texto_titulo,
-            texto_titulo.get_rect(
-                midtop=(rect_dialogo.centerx, rect_dialogo.top + 18)
-            ),
-        )
+        if self.menu_pc == "leer_correo":
+            self.dibujar_correo_seleccionado(
+                pantalla,
+                rect_dialogo,
+            )
+
+            rect_volver = pygame.Rect(
+                rect_dialogo.left + 24,
+                rect_dialogo.bottom - 52,
+                rect_dialogo.width - 48,
+                36,
+            )
+
+            pygame.draw.rect(
+                pantalla,
+                (30, 35, 45),
+                rect_volver,
+            )
+            pygame.draw.rect(
+                pantalla,
+                (220, 220, 220),
+                rect_volver,
+                1,
+            )
+
+            texto_volver = self.fuente_menu_pc.render(
+                "Volver a la bandeja",
+                True,
+                (255, 255, 255),
+            )
+
+            pantalla.blit(
+                texto_volver,
+                texto_volver.get_rect(center=rect_volver.center),
+            )
+
+            
+            return
 
         opciones = self._obtener_opciones_menu_pc()
         rectangulos = self._obtener_rectangulos_opciones_menu_pc(
@@ -330,6 +446,95 @@ class HomeScene:
                 ),
             )
 
+    def dibujar_correo_seleccionado(self, pantalla, rect_dialogo):
+        correo = self.correo_seleccionado
+
+        if correo is None:
+            return
+
+        color_texto = (255, 255, 255)
+        margen = 24
+        ancho_texto = rect_dialogo.width - margen * 2
+
+        remitente = self.fuente_menu_pc.render(
+            f"De: {correo['remitente']}",
+            True,
+            (180, 210, 255),
+        )
+
+        pantalla.blit(
+            remitente,
+            (rect_dialogo.left + margen, rect_dialogo.top + 65),
+        )
+
+        asunto = self.fuente_menu_pc.render(
+            correo["asunto"],
+            True,
+            color_texto,
+        )
+
+        pantalla.blit(
+            asunto,
+            (rect_dialogo.left + margen, rect_dialogo.top + 95),
+        )
+
+        pygame.draw.line(
+            pantalla,
+            (100, 100, 100),
+            (rect_dialogo.left + margen, rect_dialogo.top + 125),
+            (rect_dialogo.right - margen, rect_dialogo.top + 125),
+        )
+
+        y = rect_dialogo.top + 140
+        alto_linea = self.fuente_menu_pc.get_linesize()
+
+        for parrafo in correo["mensaje"].split("\n"):
+            if not parrafo:
+                y += alto_linea
+                continue
+
+            palabras = parrafo.split()
+            linea_actual = ""
+
+            for palabra in palabras:
+                prueba = (
+                    f"{linea_actual} {palabra}"
+                    if linea_actual
+                    else palabra
+                )
+
+                if (
+                    self.fuente_menu_pc.size(prueba)[0] > ancho_texto
+                    and linea_actual
+                ):
+                    superficie = self.fuente_menu_pc.render(
+                        linea_actual,
+                        True,
+                        color_texto,
+                    )
+                    pantalla.blit(
+                        superficie,
+                        (rect_dialogo.left + margen, y),
+                    )
+                    y += alto_linea
+                    linea_actual = palabra
+                else:
+                    linea_actual = prueba
+
+            if linea_actual:
+                superficie = self.fuente_menu_pc.render(
+                    linea_actual,
+                    True,
+                    color_texto,
+                )
+                pantalla.blit(
+                    superficie,
+                    (rect_dialogo.left + margen, y),
+                )
+                y += alto_linea
+
+            y += 5
+
     def dibujar_mensaje_pc(self, pantalla):
         mensaje = self.fuente.render(
             self.mensaje_pc, True, (255, 255, 255)
@@ -367,6 +572,9 @@ class HomeScene:
             and not self.dia_avanzado_durante_sueno
         ):
             self.mensaje_guardado = self.al_avanzar_dia()
+            self.gestor_correos.actualizar_dia(
+            self.game_state.dia_actual
+            )
             self.mensaje_guardado_hasta = pygame.time.get_ticks() + 5000
             self.dia_mostrado = self.game_state.dia_actual
             self.dia_avanzado_durante_sueno = True
@@ -391,8 +599,18 @@ class HomeScene:
                     if self.menu_pc == "semillas":
                         self.menu_pc = "principal"
                         self.mensaje_pc = None
+
+                    elif self.menu_pc == "correos":
+                        self.menu_pc = "principal"
+                        self.mensaje_pc = None
+
+                    elif self.menu_pc == "leer_correo":
+                        self.menu_pc = "correos"
+                        self.correo_seleccionado = None
+
                     else:
                         self.menu_pc = None
+
                     return
                 if (
                     evento.type == pygame.MOUSEBUTTONDOWN
@@ -404,12 +622,7 @@ class HomeScene:
                     return
             return
 
-        ahora = pygame.time.get_ticks()
-        if ahora >= self.proximo_cambio_sprite_ram:
-            self.sprite_ram_actual = (
-                self.sprite_ram_actual + 1
-            ) % len(self.sprites_ram)
-            self.proximo_cambio_sprite_ram = ahora + 350
+        
 
         if self.primera_entrada:
             if self.primera_visita:
@@ -422,62 +635,46 @@ class HomeScene:
                 self.jugador.rectangulo = self.obtener_posicion_entrada(
                     limites_pantalla
                 )
+
             self.primera_entrada = False
-        if self.nodo_dialogo_ram is None:
-            rect_previo = self.jugador.rectangulo.copy()
-            self.jugador.actualizar(teclas)
+
+        # Movimiento del jugador: se ejecuta en cada actualización.
+        rect_previo = self.jugador.rectangulo.copy()
+        self.jugador.actualizar(teclas)
+        self.jugador.rectangulo.clamp_ip(limites_pantalla)
+
+        cama = self.obtener_cama(limites_pantalla)
+
+        for cuadrado in [*self.cuadrados, cama]:
+            if self.jugador.rectangulo.colliderect(cuadrado):
+                self.jugador.rectangulo = rect_previo
+                break
             self.jugador.rectangulo.clamp_ip(limites_pantalla)
+
             cama = self.obtener_cama(limites_pantalla)
-            for cuadrado in [*self.cuadrados, cama, self.npc_rectangulo]:
+
+            for cuadrado in [*self.cuadrados, cama]:
                 if self.jugador.rectangulo.colliderect(cuadrado):
                     self.jugador.rectangulo = rect_previo
                     break
         salida = self.obtener_salida(limites_pantalla)
-        if (
-            self.nodo_dialogo_ram is None
-            and self.jugador.rectangulo.colliderect(salida)
-        ):
+        if self.jugador.rectangulo.colliderect(salida):
             self.primera_entrada = True
             self.al_salir_casa()
             return
-        area_interaccion_ram = self.npc_rectangulo.inflate(40, 40)
-        if (
-            self.nodo_dialogo_ram is not None
-            and not self.jugador.rectangulo.colliderect(area_interaccion_ram)
-        ):
-            self.nodo_dialogo_ram = None
+        
         area_interaccion_cama = self.obtener_area_interaccion_cama(
             limites_pantalla
         )
         for evento in eventos:
-            if (
-                self.nodo_dialogo_ram is not None
-                and evento.type == pygame.MOUSEBUTTONDOWN
-                and evento.button == 1
-            ):
-                self.dialogo_ram.procesar_click(
-                    evento.pos, limites_pantalla
-                )
-                continue
-
             if evento.type != pygame.KEYDOWN:
                 continue
-
-            if self.nodo_dialogo_ram is not None:
-                if evento.key == pygame.K_ESCAPE:
-                    self.dialogo_ram.cerrar()
-                continue
-
             if evento.key != pygame.K_e:
                 continue
-            if self.jugador.rectangulo.colliderect(area_interaccion_ram):
-                reproducir_sonido_interaccion()
-                self.dialogo_ram.iniciar()
-                self.jugador.sprite = self.jugador.sprites["Idle"]
-                self.jugador.moviendose = False
-            elif self.jugador.rectangulo.colliderect(area_interaccion_cama):
+            if self.jugador.rectangulo.colliderect(area_interaccion_cama):
                 reproducir_sonido_interaccion()
                 self.iniciar_sueno()
+
             elif self.jugador.rectangulo.colliderect(
                 self.obtener_pc(limites_pantalla)
             ):
@@ -505,11 +702,7 @@ class HomeScene:
         #pygame.draw.rect(pantalla, (95, 125, 135), pc)
         #pygame.draw.rect(pantalla, (60, 45, 30), pc, 3)
 
-        sprite_ram = self.sprites_ram[self.sprite_ram_actual]
-        pantalla.blit(
-            sprite_ram,
-            sprite_ram.get_rect(center=self.npc_rectangulo.center),
-        )
+        
         if self.transicion_sueno_inicio is None:
             self.jugador.dibujar(pantalla)
         else:
@@ -535,20 +728,6 @@ class HomeScene:
                 self.dibujar_menu_pc(pantalla)
             elif self.mensaje_pc is not None and pygame.time.get_ticks() < self.mensaje_pc_hasta:
                 self.dibujar_mensaje_pc(pantalla)
-            elif self.nodo_dialogo_ram is not None:
-                self.dialogo_ram.dibujar(pantalla)
-            elif self.jugador.rectangulo.colliderect(
-                self.npc_rectangulo.inflate(40, 40)
-            ):
-                indicacion = self.fuente.render(
-                    "E: hablar con Ram", True, (255, 255, 255)
-                )
-                pantalla.blit(
-                    indicacion,
-                    indicacion.get_rect(
-                        midtop=(pantalla.get_width() // 2, 20)
-                    ),
-                )
             elif self.jugador.rectangulo.colliderect(
                 self.obtener_area_interaccion_cama(limites_pantalla)
             ):

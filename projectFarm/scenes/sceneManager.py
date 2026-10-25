@@ -45,6 +45,7 @@ class SceneManager:
             self.cambiar_a_granja,
             self.avanzar_dia_y_guardar,
         )
+        self.casa.gestor_correos.actualizar_dia(self.game_state.dia_actual)
         self.reciclaje = RecycleScene(self.game_state, self.inventario, self.cambiar_a_granja)  
         self.titulo = TitleScene(self.mostrar_selector_partidas)
         self.selector_partidas = SaveSlotsScene(
@@ -136,12 +137,28 @@ class SceneManager:
         self.selector_partidas.mensaje = None
         self.cambiar_escena("partidas")
 
-    def iniciar_partida(self, slot):
+    def iniciar_partida(
+        self,
+        slot,
+        nombre_jugador=None,
+        tipo_mascota=None,
+        nombre_mascota=None,
+    ):
         partida = self.save_slots.cargar(slot)
+
         if partida is None:
             self._reiniciar_progreso()
+
+            self.game_state.nombre_jugador = nombre_jugador
+            self.game_state.tipo_mascota = tipo_mascota
+            self.game_state.nombre_mascota = nombre_mascota
         else:
             self._cargar_progreso(partida)
+
+        self.casa.gestor_correos.actualizar_dia(
+            self.game_state.dia_actual
+        )
+
         self.partida_activa = slot
         self.casa.primera_entrada = True
         self.casa.primera_visita = True
@@ -211,6 +228,11 @@ class SceneManager:
             "tanqueOxigenoEsteDisponible",
             "tanqueOxigenoOesteDisponible",
             "tanqueOxigenoNorteDisponible",
+            "correos_recibidos",
+            "correos_leidos",
+            "nombre_jugador",
+            "tipo_mascota",
+            "nombre_mascota",
         }
         valores_opcionales_por_defecto = {
             "parcela1Comprada": True,
@@ -249,6 +271,11 @@ class SceneManager:
             "tanqueOxigenoNorteDisponible": bool(
                 estado_guardado.get("tanqueOxigenoNorteComprado", False)
             ),
+            "correos_recibidos": [],
+            "correos_leidos": [],
+            "nombre_jugador": None,
+            "tipo_mascota": None,
+            "nombre_mascota": None,
         }
         if (
             set(estado_guardado) - claves_estado
@@ -393,6 +420,7 @@ class SceneManager:
     def avanzar_dia_y_guardar(self):
         self.granja.avanzar_dia()
         self.expedicion.procesar_fin_dia()
+        self.casa.gestor_correos.actualizar_dia(self.game_state.dia_actual)
         if self.partida_activa is None:
             return "Dia avanzado, pero no hay espacio activo para guardar."
 

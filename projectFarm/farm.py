@@ -5,7 +5,7 @@ CULTIVOS = {
     1: {
         "nombre": "zanahoria",
         "dias_crecimiento": 2,
-        "precio_venta": 9,
+        "precio_venta": 4,
         "cantidad_cosecha": 1,
         "semilla": "semilla_zanahoria",
         "cosecha": "zanahorias_cosechadas",
@@ -18,8 +18,8 @@ CULTIVOS = {
     },
     2: {
         "nombre": "papa",
-        "dias_crecimiento": 2,
-        "precio_venta": 4,
+        "dias_crecimiento": 3,
+        "precio_venta": 6,
         "cantidad_cosecha": 3,
         "semilla": "semilla_papa",
         "cosecha": "papas_cosechadas",
@@ -28,8 +28,8 @@ CULTIVOS = {
     },
     3: {
         "nombre": "tomate",
-        "dias_crecimiento": 2,
-        "precio_venta": 5,
+        "dias_crecimiento": 6,
+        "precio_venta": 9,
         "cantidad_cosecha": 5,
         "semilla": "semilla_tomate",
         "cosecha": "tomates_cosechadas",
@@ -38,8 +38,8 @@ CULTIVOS = {
     },
     4: {
         "nombre": "repollo",
-        "dias_crecimiento": 2,
-        "precio_venta": 6,
+        "dias_crecimiento": 4,
+        "precio_venta": 22,
         "cantidad_cosecha": 1,
         "semilla": "semilla_repollo",
         "cosecha": "repollos_cosechadas",
@@ -50,7 +50,7 @@ CULTIVOS = {
 
 
 class Parcela:
-    TAMANO = 16 * 3
+    TAMANO = 48
 
     def __init__(self, x, y):
         self.planta = None
@@ -169,10 +169,24 @@ class Parcela:
         if self.planta is not None and sprites_cultivos is not None:
             if self.seca:
                 nombre_sprite = "cosechaSeca"
+            if self.seca:
+                nombre_sprite = "cosechaSeca"
             else:
                 etapas = CULTIVOS[self.planta]["etapas"]
-                indice_etapa = min(self.dias_crecimiento, len(etapas) - 1)
+                dias_necesarios = CULTIVOS[self.planta]["dias_crecimiento"]
+
+                if self.dias_crecimiento == 0:
+                    indice_etapa = 0  # Semilla
+                elif self.dias_crecimiento < dias_necesarios:
+                    indice_etapa = 1  # Brote
+                else:
+                    indice_etapa = 2  # Maduro
+
                 nombre_sprite = etapas[indice_etapa]
+
             sprite = sprites_cultivos[self.planta][nombre_sprite]
-            pantalla.blit(sprite, sprite.get_rect(center=rectangulo.center))
+            pantalla.blit(
+                sprite,
+                sprite.get_rect(center=rectangulo.center),
+            )
         pygame.draw.rect(pantalla, (60, 45, 30), rectangulo, 2)

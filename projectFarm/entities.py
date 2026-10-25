@@ -13,7 +13,7 @@ class Jugador:
 
     def __init__(self, x=100, y=100):
         self.rectangulo = pygame.Rect(x, y, 50, 50)
-        self.velocidad = 4
+        self.velocidad = 3
         spritesheet_json = (
             Path(__file__).parent / "utils" / "AstroSpritesheetNew.json"
         )
@@ -92,3 +92,99 @@ class Jugador:
         posicion = sprite.get_rect(center=self.rectangulo.center)
         posicion.move_ip(desplazamiento)
         pantalla.blit(sprite, posicion)
+
+
+class Rover:
+    TAMANO_SPRITE = (48, 48)
+    DISTANCIA_PATRULLA = 60
+    VELOCIDAD = 24
+    INTERVALO_FRAME = 150
+
+    def __init__(self, x, y):
+        spritesheet_json = Path(__file__).parent / "utils" / "RoverSprite.json"
+        spritesheet = Spritesheet(str(spritesheet_json))
+        self.sprites = [
+            pygame.transform.scale(sprite, self.TAMANO_SPRITE)
+            for sprite in spritesheet.get_animation_frames("default")
+        ]
+        self.sprites_izquierda = [
+            pygame.transform.flip(sprite, True, False)
+            for sprite in self.sprites
+        ]
+        self.rectangulo = self.sprites[0].get_rect(center=(x, y))
+        self.posicion_derecha = self.rectangulo.x
+        self.posicion_izquierda = (
+            self.posicion_derecha - self.DISTANCIA_PATRULLA
+        )
+        self.posicion_x = float(self.rectangulo.x)
+        self.direccion = -1
+        self.ultimo_update = pygame.time.get_ticks()
+        self.detenido = False
+
+    def actualizar(self, colisiones=(), bloqueos=()):
+        # Si el jugador está tocando el Rover, detenerlo.
+        if any(
+            self.rectangulo.colliderect(bloqueo)
+            for bloqueo in bloqueos
+        ):
+            self.detenido = True
+            return
+
+        # Si el jugador ya no lo toca, reanudar el movimiento.
+        if self.detenido:
+            self.detenido = False
+            self.ultimo_update = pygame.time.get_ticks()
+
+        ahora = pygame.time.get_ticks()
+        delta = min((ahora - self.ultimo_update) / 1000, 0.1)
+        self.ultimo_update = ahora
+
+        if delta == 0:
+            return
+
+        posicion_anterior = self.posicion_x
+        self.posicion_x += self.VELOCIDAD * delta * self.direccion
+
+        if self.posicion_x <= self.posicion_izquierda:
+            self.posicion_x = float(self.posicion_izquierda)
+            self.direccion = 1
+        elif self.posicion_x >= self.posicion_derecha:
+            self.posicion_x = float(self.posicion_derecha)
+            self.direccion = -1
+
+        self.rectangulo.x = round(self.posicion_x)
+
+        # Si choca con un obstáculo del mapa, retroceder.
+        if any(
+            self.rectangulo.colliderect(colision)
+            for colision in colisiones
+        ):
+            self.posicion_x = posicion_anterior
+            self.rectangulo.x = round(self.posicion_x)
+            self.direccion *= -1
+
+    def dibujar(self, pantalla, desplazamiento=(0, 0)):
+        if self.detenido:
+            # Mostrar únicamente el primer sprite al detenerse.
+            frames = (
+                self.sprites_izquierda
+                if self.direccion < 0
+                else self.sprites
+            )
+            frame = frames[0]
+        else:
+            # Reproducir la animación mientras se mueve.
+            frames = (
+                self.sprites_izquierda
+                if self.direccion < 0
+                else self.sprites
+            )
+            indice = (
+                pygame.time.get_ticks() // self.INTERVALO_FRAME
+            ) % len(frames)
+            frame = frames[indice]
+
+        pantalla.blit(
+            frame,
+            self.rectangulo.move(desplazamiento),
+        )

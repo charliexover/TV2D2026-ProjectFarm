@@ -22,7 +22,7 @@ class SkillTreeMenu:
 		},
 		"Parcela3": {
 			"estado": "parcela3Comprada",
-			"costo": 150,
+			"costo": 250,
 			"nombre": "Parcela 3",
 		},
 		"GuantesReforzados": {
@@ -32,33 +32,33 @@ class SkillTreeMenu:
 		},
 		"TanqueOxigeno1": {
 			"estado": "tanqueOxigenoEsteComprado",
-			"costo": 50,
+			"costo": 25,
 			"nombre": "Tanque de Oxígeno Este",
 		},
 		"TanqueOxigeno2": {
 			"estado": "tanqueOxigenoOesteComprado",
-			"costo": 100,
+			"costo": 50,
 			"nombre": "Tanque de Oxígeno Oeste",
 			"requiere": "tanqueOxigenoEsteComprado",
 			"requisito_nombre": "el Tanque de Oxígeno Este",
 		},
 		"TanqueOxigeno3": {
 			"estado": "tanqueOxigenoNorteComprado",
-			"costo": 150,
+			"costo": 250,
 			"nombre": "Tanque de Oxígeno Norte",
 			"requiere": "tanqueOxigenoOesteComprado",
 			"requisito_nombre": "el Tanque de Oxígeno Oeste",
 		},
 		"CentroDatos": {
 			"estado": "centroDatosComprado",
-			"costo": 200,
+			"costo": 500,
 			"materiales": 50,
 			"nombre": "Centro de Datos",
 		},
 		"Expediciones": {
 			"estado": "expedicionesComprado",
-			"costo": 300,
-			"materiales": 100,
+			"costo": 500,
+			"materiales": 50,
 			"nombre": "Centro de Expediciones",
 		},
 		"Reciclaje": {
@@ -73,14 +73,14 @@ class SkillTreeMenu:
 		},
 		"SemillaTomate": {
 			"estado": "semillaTomateDesbloqueada",
-			"costo": 60,
+			"costo": 100,
 			"nombre": "semilla de tomate",
 			"requiere": "semillaPapaDesbloqueada",
 			"requisito_nombre": "la semilla de papa",
 		},
 		"SemillaRepollo": {
 			"estado": "semillaRepolloDesbloqueada",
-			"costo": 120,
+			"costo": 150,
 			"nombre": "semilla de repollo",
 			"requiere": "semillaTomateDesbloqueada",
 			"requisito_nombre": "la semilla de tomate",

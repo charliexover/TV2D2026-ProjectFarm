@@ -58,9 +58,9 @@ class DataCenterScene:
         if self.game_state.datos_antena_enviados:
             self.mensaje_antena = "Los datos de hoy ya fueron enviados."
         elif self.game_state.antena_encontrada:
-            self.game_state.creditos += 10
+            self.game_state.creditos += 25
             self.game_state.datos_antena_enviados = True
-            self.mensaje_antena = "Datos enviados. +10 creditos."
+            self.mensaje_antena = "Datos enviados. +25 creditos."
         else:
             self.mensaje_antena = (
                 f"Datos pendientes en Antena: {self.game_state.antena_objetivo}. "
