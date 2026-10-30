@@ -10,50 +10,50 @@ class SkillTreeMenu:
 	ESCALA = 3
 	ESCALA_HOVER = 1.25
 	COMPRAS_NODOS = {
-		"Parcela1": {
-			"estado": "parcela1Comprada",
-			"costo": 0,
-			"nombre": "Parcela 1",
-		},
-		"Parcela2": {
-			"estado": "parcela2Comprada",
-			"costo": 100,
-			"nombre": "Parcela 2",
-		},
-		"Parcela3": {
-			"estado": "parcela3Comprada",
-			"costo": 250,
-			"nombre": "Parcela 3",
-		},
 		"GuantesReforzados": {
 			"estado": "guanteReforzado",
 			"costo": 50,
 			"nombre": "Guantes Reforzados",
 		},
-		"TanqueOxigeno1": {
-			"estado": "tanqueOxigenoEsteComprado",
+		"OxigenoMaximo1": {
+			"estado": "oxigenoMaximo1Comprado",
 			"costo": 25,
-			"nombre": "Tanque de Oxígeno Este",
+			"aumento": 100,
+			"nombre": "Oxígeno Máximo I",
 		},
-		"TanqueOxigeno2": {
-			"estado": "tanqueOxigenoOesteComprado",
+		"OxigenoMaximo2": {
+			"estado": "oxigenoMaximo2Comprado",
 			"costo": 50,
-			"nombre": "Tanque de Oxígeno Oeste",
-			"requiere": "tanqueOxigenoEsteComprado",
-			"requisito_nombre": "el Tanque de Oxígeno Este",
+			"aumento": 150,
+			"nombre": "Oxígeno Máximo II",
+			"requiere": "oxigenoMaximo1Comprado",
+			"requisito_nombre": "la mejora de Oxígeno Máximo I",
 		},
-		"TanqueOxigeno3": {
-			"estado": "tanqueOxigenoNorteComprado",
+		"OxigenoMaximo3": {
+			"estado": "oxigenoMaximo3Comprado",
 			"costo": 250,
-			"nombre": "Tanque de Oxígeno Norte",
-			"requiere": "tanqueOxigenoOesteComprado",
-			"requisito_nombre": "el Tanque de Oxígeno Oeste",
+			"aumento": 250,
+			"nombre": "Oxígeno Máximo III",
+			"requiere": "oxigenoMaximo2Comprado",
+			"requisito_nombre": "la mejora de Oxígeno Máximo II",
 		},
 		"CentroDatos": {
 			"estado": "centroDatosComprado",
 			"costo": 500,
 			"materiales": 50,
 			"nombre": "Centro de Datos",
+		},
+		"DescargaDatos1": {
+			"estado": "descargaDatos1Comprado",
+			"costo": 100,
+			"nombre": "Descarga de Datos I",
+		},
+		"DescargaDatos2": {
+			"estado": "descargaDatos2Comprado",
+			"costo": 200,
+			"nombre": "Descarga de Datos II",
+			"requiere": "descargaDatos1Comprado",
+			"requisito_nombre": "la mejora de Descarga de Datos I",
 		},
 		"Expediciones": {
 			"estado": "expedicionesComprado",
@@ -87,9 +87,7 @@ class SkillTreeMenu:
 		},
 	}
 	SPRITES_NODOS = {
-		"Parcela": "Parcela_OFF",
 		"GuantesReforzados": "GuantesReforzados_OFF",
-		"TanqueOxigeno": "TanqueOxigeno_OFF",
 		"CentroDatos": "CentroDatos_OFF",
 		"Expediciones": "Expediciones_OFF",
 		"Reciclaje": "Reciclaje_OFF",
@@ -232,6 +230,12 @@ class SkillTreeMenu:
 			game_state.creditos -= compra["costo"]
 			game_state.materiales -= costo_materiales
 			setattr(game_state, compra["estado"], True)
+			if "aumento" in compra:
+				game_state.oxigeno_maximo += compra["aumento"]
+				game_state.oxigeno = min(
+					game_state.oxigeno + compra["aumento"],
+					game_state.oxigeno_maximo,
+				)
 		self.dialogo = None
 
 	def procesar_eventos(self, eventos, limites_pantalla, game_state):

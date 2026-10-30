@@ -46,10 +46,10 @@ CORREOS = [
         "asunto": "Venta de cosechas",
         "mensaje": (
             "El precio de venta de las cosechas es el siguiente:\n"
-            "Zanahoria: 4 cred \n"
-            "Papa: 6 cred \n"
-            "Tomate: 9 cred \n"
-            "Repollo: 22 cred"
+            "Zanahoria: 8 cred \n"
+            "Papa: 12 cred \n"
+            "Tomate: 18 cred \n"
+            "Repollo: 44 cred"
         ),
     },
     {

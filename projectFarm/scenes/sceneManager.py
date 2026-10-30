@@ -15,6 +15,7 @@ from projectFarm.game_state import GameState
 from projectFarm.farm import CULTIVOS
 from projectFarm.save_slots import SaveSlots
 from projectFarm.scraps import Chatarra
+import random
 
 
 class SceneManager:
@@ -222,17 +223,20 @@ class SceneManager:
             "dia_uso_tanque_oeste",
             "dia_uso_tanque_norte",
             "dia_uso_tanque_este",
-            "tanqueOxigenoEsteComprado",
-            "tanqueOxigenoOesteComprado",
-            "tanqueOxigenoNorteComprado",
-            "tanqueOxigenoEsteDisponible",
-            "tanqueOxigenoOesteDisponible",
-            "tanqueOxigenoNorteDisponible",
             "correos_recibidos",
             "correos_leidos",
             "nombre_jugador",
             "tipo_mascota",
             "nombre_mascota",
+            "tormenta_arena",
+            "oxigeno_maximo",
+            "oxigenoMaximo1Comprado",
+            "oxigenoMaximo2Comprado",
+            "oxigenoMaximo3Comprado",
+            "progreso_centro_datos",
+            "centro_datos_completado",
+            "descargaDatos1Comprado",
+            "descargaDatos2Comprado",
         }
         valores_opcionales_por_defecto = {
             "parcela1Comprada": True,
@@ -256,32 +260,50 @@ class SceneManager:
             "expedicion_activa": None,
             "dia_finalizacion_expedicion": None,
             "resultado_ultima_expedicion": "",
-            "dia_uso_tanque_oeste": None,
-            "dia_uso_tanque_norte": None,
-            "dia_uso_tanque_este": None,
-            "tanqueOxigenoEsteComprado": False,
-            "tanqueOxigenoOesteComprado": False,
-            "tanqueOxigenoNorteComprado": False,
-            "tanqueOxigenoEsteDisponible": bool(
-                estado_guardado.get("tanqueOxigenoEsteComprado", False)
-            ),
-            "tanqueOxigenoOesteDisponible": bool(
-                estado_guardado.get("tanqueOxigenoOesteComprado", False)
-            ),
-            "tanqueOxigenoNorteDisponible": bool(
-                estado_guardado.get("tanqueOxigenoNorteComprado", False)
-            ),
             "correos_recibidos": [],
             "correos_leidos": [],
             "nombre_jugador": None,
             "tipo_mascota": None,
             "nombre_mascota": None,
+            "tormenta_arena": False,
+            "oxigeno_maximo": 100,
+            "oxigenoMaximo1Comprado": False,
+            "oxigenoMaximo2Comprado": False,
+            "oxigenoMaximo3Comprado": False,
+            "progreso_centro_datos": 0,
+            "centro_datos_completado": False,
+            "descargaDatos1Comprado": False,
+            "descargaDatos2Comprado": False,
         }
+        # Campos antiguos que ya no se utilizan desde que se eliminaron
+        # los tanques de oxígeno del mapa.
+        campos_obsoletos = {
+            "dia_uso_tanque_oeste",
+            "dia_uso_tanque_norte",
+            "dia_uso_tanque_este",
+            "tanqueOxigenoEsteComprado",
+            "tanqueOxigenoOesteComprado",
+            "tanqueOxigenoNorteComprado",
+            "tanqueOxigenoEsteDisponible",
+            "tanqueOxigenoOesteDisponible",
+            "tanqueOxigenoNorteDisponible",
+        }
+
+        # Ignoramos esos campos al validar partidas antiguas.
+        claves_guardadas = set(estado_guardado) - campos_obsoletos
+
         if (
-            set(estado_guardado) - claves_estado
-            or claves_estado - set(estado_guardado) - claves_opcionales
+            claves_guardadas - claves_estado
+            or claves_estado - claves_guardadas - claves_opcionales
         ):
             raise ValueError("El estado guardado no coincide con esta version.")
+
+        # Quitamos los atributos obsoletos antes de restaurar el estado.
+        estado_guardado = {
+            nombre: valor
+            for nombre, valor in estado_guardado.items()
+            if nombre not in campos_obsoletos
+        }
         estado_guardado = estado_guardado.copy()
         for nombre, valor in valores_opcionales_por_defecto.items():
             estado_guardado.setdefault(nombre, valor)
@@ -306,9 +328,6 @@ class SceneManager:
                         "dia_inicio_procesamiento",
                         "dia_mision_antena",
                         "dia_finalizacion_expedicion",
-                        "dia_uso_tanque_oeste",
-                        "dia_uso_tanque_norte",
-                        "dia_uso_tanque_este",
                     )
                     else (str, type(None))
                 )
@@ -330,11 +349,20 @@ class SceneManager:
         cantidad_parcelas_iniciales = len(
             self.granja.parcelas_por_nodo["Parcela1"]
         )
+
+        if not isinstance(datos_parcelas, list):
+            raise ValueError("Los datos de parcelas guardados no son validos.")
+
+        # Las partidas antiguas podían tener las 3 parcelas.
+        # Conservamos únicamente los datos de Parcela1.
         if len(datos_parcelas) not in (
             cantidad_parcelas_iniciales,
-            len(self.granja.parcelas),
+            cantidad_parcelas_iniciales * 3,
         ):
             raise ValueError("La cantidad de parcelas guardadas no es valida.")
+
+        if len(datos_parcelas) == cantidad_parcelas_iniciales * 3:
+            datos_parcelas = datos_parcelas[:cantidad_parcelas_iniciales]
         slot_inventario = partida["slot_inventario"]
         if (
             type(slot_inventario) is not int
@@ -371,16 +399,7 @@ class SceneManager:
             if type(seca) is not bool or (seca and planta is None):
                 raise ValueError("El estado de sequia guardado no es valido.")
 
-        datos_parcelas.extend(
-            {
-                "planta": None,
-                "dias_crecimiento": 0,
-                "dia_regado": None,
-                "dia_maduro": None,
-                "seca": False,
-            }
-            for _ in range(len(self.granja.parcelas) - len(datos_parcelas))
-        )
+        
         posiciones_chatarra = partida["chatarra_restante"]
         for posicion in posiciones_chatarra:
             if (
@@ -395,7 +414,10 @@ class SceneManager:
 
         self.game_state.__dict__.clear()
         self.game_state.__dict__.update(estado_guardado)
-        for parcela, datos in zip(self.granja.parcelas, datos_parcelas):
+        for parcela, datos in zip(
+            self.granja.parcelas_por_nodo["Parcela1"],
+            datos_parcelas,
+        ):
             parcela.planta = datos["planta"]
             parcela.dias_crecimiento = datos["dias_crecimiento"]
             parcela.dia_regado = datos["dia_regado"]
@@ -419,6 +441,10 @@ class SceneManager:
 
     def avanzar_dia_y_guardar(self):
         self.granja.avanzar_dia()
+        if self.game_state.dia_actual >= 7:
+            self.game_state.tormenta_arena = random.random() < 0.35
+        else:
+            self.game_state.tormenta_arena = False
         self.expedicion.procesar_fin_dia()
         self.casa.gestor_correos.actualizar_dia(self.game_state.dia_actual)
         if self.partida_activa is None:

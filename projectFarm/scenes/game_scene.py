@@ -7,18 +7,21 @@ from pytmx import TiledTileLayer
 from pytmx.util_pygame import load_pygame
 
 from engine.audio import reproducir_sonido_interaccion
+from engine.harvest_effect import EfectoCosecha
 from engine.minigame1 import Minijuego1
 from engine.scroll import Camera
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado, Inventario
+from engine.water_splash import SistemaSplashAgua
 from ..entities import Jugador
 from ..farm import CULTIVOS, Parcela
 from ..scraps import Chatarra
 from .skilltree_scene import SkillTreeMenu
+from engine.particle_system import SistemaParticulas
 
 
 class GameScene:
-	SEGUNDOS_POR_PUNTO_OXIGENO = 0.2
+	SEGUNDOS_POR_PUNTO_OXIGENO = 2
 	DESPLAZAMIENTO_ENTRADA_DATOS_X = 12
 	DURACION_ANIMACION_SUENO = 1800
 	DURACION_FUNDIDO_SUENO = 800
@@ -46,6 +49,11 @@ class GameScene:
 		self.menu_habilidades = SkillTreeMenu()
 		self.camera = Camera()
 		self.origen_mapa = (0, 0)
+		self.particulas = None
+		self.splash_riego = SistemaSplashAgua()
+		self.efecto_cosecha = EfectoCosecha()
+		self.descargaDatos1Comprado = False
+		self.descargaDatos2Comprado = False
 		self.al_entrar_casa = al_entrar_casa
 		self.al_entrar_reciclaje = al_entrar_reciclaje
 		self.al_entrar_data_center = al_entrar_data_center
@@ -73,25 +81,30 @@ class GameScene:
 		self._generar_chatarra()
 		self.campos_disponibilidad_parcelas = {
 			"Parcela1": "parcela1Disponible",
-			"Parcela2": "parcela2Disponible",
-			"Parcela3": "parcela3Disponible",
 		}
 		self.parcelas_por_nodo = {}
+
+		COLUMNAS_PARCELAS = 15
+		FILAS_PARCELAS = 6
+
 		for nombre, area in self.areas_parcelas_mapa.items():
-			ancho_grilla = Parcela.TAMANO * 3
-			alto_grilla = Parcela.TAMANO * 3
+			ancho_grilla = Parcela.TAMANO * COLUMNAS_PARCELAS
+			alto_grilla = Parcela.TAMANO * FILAS_PARCELAS
+
 			origen_parcelas = (
 				area.left + (area.width - ancho_grilla) // 2,
 				area.top + (area.height - alto_grilla) // 2,
 			)
+
 			self.parcelas_por_nodo[nombre] = [
 				Parcela(
 					origen_parcelas[0] + columna * Parcela.TAMANO,
 					origen_parcelas[1] + fila * Parcela.TAMANO,
 				)
-				for fila in range(3)
-				for columna in range(3)
+				for fila in range(FILAS_PARCELAS)
+				for columna in range(COLUMNAS_PARCELAS)
 			]
+
 		self.parcelas = [
 			parcela
 			for parcelas in self.parcelas_por_nodo.values()
@@ -100,23 +113,7 @@ class GameScene:
 		ruta_sprite_parcela = os.path.join(
 			os.path.dirname(__file__), "..", "assets", "parcelaSprite.png"
 		)
-		sprite_parcela = pygame.image.load(
-			os.path.normpath(ruta_sprite_parcela)
-		).convert_alpha()
-		self.sprites_parcelas_mapa = {}
-		self.rectangulos_parcelas_mapa = {}
-		for nombre in ("Parcela2", "Parcela3"):
-			area = self.areas_parcelas_mapa[nombre]
-			self.sprites_parcelas_mapa[nombre] = pygame.transform.scale(
-				sprite_parcela,
-				(
-					sprite_parcela.get_width() * 3,
-					sprite_parcela.get_height() * 3,
-				),
-			)
-			self.rectangulos_parcelas_mapa[nombre] = (
-				self.sprites_parcelas_mapa[nombre].get_rect(center=area.center)
-			)
+		
 		self.posiciones_parcelas_mapa = [
 			parcela.rectangulo.topleft for parcela in self.parcelas
 		]
@@ -143,30 +140,47 @@ class GameScene:
 		)
 		
 		ruta_cosechas = os.path.join(
-			os.path.dirname(__file__), "..", "utils", "CosechasSpritesheet.json"
+			os.path.dirname(__file__), "..", "utils", "CosechasSpritesheetVersionFinal.json"
 		)
 		spritesheet_cosechas = Spritesheet(ruta_cosechas)
 		self.sprites_cultivos = {
 			tipo: {
-				nombre_sprite: spritesheet_cosechas.get_sprite(nombre_sprite)
+				nombre_sprite: pygame.transform.scale(
+					spritesheet_cosechas.get_sprite(nombre_sprite),
+					datos.get("tamano_etapas", {}).get(
+						nombre_sprite,
+						(48, 48),
+					),
+				)
 				for nombre_sprite in (*datos["etapas"], "cosechaSeca")
 			}
 			for tipo, datos in CULTIVOS.items()
 		}
+		self.sprites_tierra = {
+			"seca": pygame.transform.scale(
+				spritesheet_cosechas.get_sprite("tierraSeca"),
+				(48, 48),
+			),
+			"mojada": pygame.transform.scale(
+				spritesheet_cosechas.get_sprite("tierraMojada"),
+				(48, 48),
+			),
+		}
 
 
 	def obtener_parcela_jugador(self, jugador, posicion=None):
+		if not self.game_state.parcela1Disponible:
+			return None
+
 		return next(
 			(
 				parcela
-				for nombre, parcelas in self.parcelas_por_nodo.items()
-				if getattr(
-					self.game_state,
-					self.campos_disponibilidad_parcelas[nombre],
-				)
-				for parcela in parcelas
+				for parcela in self.parcelas_por_nodo["Parcela1"]
 				if jugador.rectangulo.colliderect(parcela.rectangulo)
-				and (posicion is None or parcela.rectangulo.collidepoint(posicion))
+				and (
+					posicion is None
+					or parcela.rectangulo.collidepoint(posicion)
+				)
 			),
 			None,
 		)
@@ -177,6 +191,20 @@ class GameScene:
 			os.path.dirname(__file__), "..", "assets", "MarsMap.tmx"
 		)
 		mapa = load_pygame(os.path.normpath(ruta_mapa))
+		capa_zona_oxigeno = mapa.get_layer_by_name("ZonaOxigeno")
+
+		objeto_zona_segura = next(
+			objeto
+			for objeto in capa_zona_oxigeno
+			if objeto.name == "zonaSegura"
+		)
+
+		self.zona_segura_oxigeno = pygame.Rect(
+			round(objeto_zona_segura.x * 3),
+			round(objeto_zona_segura.y * 3),
+			round(objeto_zona_segura.width * 3),
+			round(objeto_zona_segura.height * 3),
+		)
 		capa_antenas = mapa.get_layer_by_name("Antenas")
 		self.antenas_mapa = {
 			objeto.name: (round(objeto.x * 3), round(objeto.y * 3))
@@ -186,9 +214,13 @@ class GameScene:
 		objetos_parcelas = {
 			objeto.name: objeto for objeto in capa_parcelas
 		}
-		nombres_parcelas = ("Parcela1", "Parcela2", "Parcela3")
-		if any(nombre not in objetos_parcelas for nombre in nombres_parcelas):
-			raise ValueError("Falta una parcela requerida en la capa 'Parcelas'.")
+		nombre = "Parcela1"
+
+		if nombre not in objetos_parcelas:
+			raise ValueError(
+				"Falta la parcela 'Parcela1' en la capa 'Parcelas'."
+			)
+
 		self.areas_parcelas_mapa = {
 			nombre: pygame.Rect(
 				round(objetos_parcelas[nombre].x * 3),
@@ -196,7 +228,6 @@ class GameScene:
 				round(objetos_parcelas[nombre].width * 3),
 				round(objetos_parcelas[nombre].height * 3),
 			)
-			for nombre in nombres_parcelas
 		}
 		self.area_parcelas_mapa = self.areas_parcelas_mapa["Parcela1"]
 		capa_chatarra = mapa.get_layer_by_name("Chatarra")
@@ -267,37 +298,7 @@ class GameScene:
 				),
 			),
 		}
-		ruta_sprite_oxigeno = os.path.join(
-			os.path.dirname(__file__), "..", "assets", "oxigenSprite.png"
-		)
-		sprite_oxigeno = pygame.image.load(
-			os.path.normpath(ruta_sprite_oxigeno)
-		).convert_alpha()
-		self.sprite_oxigeno = pygame.transform.scale(
-			sprite_oxigeno,
-			(
-				sprite_oxigeno.get_width() * 3,
-				sprite_oxigeno.get_height() * 3,
-			),
-		)
-		capa_tanques_oxigeno = mapa.get_layer_by_name("TanquesOxigeno")
-		self.tanques_oxigeno_mapa = {
-			objeto.name: self.sprite_oxigeno.get_rect(
-				midbottom=(round(objeto.x * 3), round(objeto.y * 3))
-			)
-			for objeto in capa_tanques_oxigeno
-			if objeto.name in ("TanqueOeste", "TanqueNorte", "TanqueEste")
-		}
-		self.campos_uso_tanques = {
-			"TanqueOeste": "dia_uso_tanque_oeste",
-			"TanqueNorte": "dia_uso_tanque_norte",
-			"TanqueEste": "dia_uso_tanque_este",
-		}
-		self.campos_compra_tanques = {
-			"TanqueEste": "tanqueOxigenoEsteDisponible",
-			"TanqueOeste": "tanqueOxigenoOesteDisponible",
-			"TanqueNorte": "tanqueOxigenoNorteDisponible",
-		}
+		
 		ruta_sprite_datos = os.path.join(
 			os.path.dirname(__file__),
 			"..",
@@ -468,23 +469,13 @@ class GameScene:
 		for parcela in self.parcelas:
 			parcela.avanzar_dia(self.game_state.dia_actual)
 		self.game_state.dia_actual += 1
-		if self.game_state.parcela2Comprada:
-			self.game_state.parcela2Disponible = True
-		if self.game_state.parcela3Comprada:
-			self.game_state.parcela3Disponible = True
 		if self.game_state.centroDatosComprado:
 			self.game_state.centroDatosDisponible = True
 		if self.game_state.reciclajeComprado:
 			self.game_state.reciclajeDisponible = True
 		if self.game_state.expedicionesComprado:
 			self.game_state.expedicionesDisponible = True
-		if self.game_state.tanqueOxigenoEsteComprado:
-			self.game_state.tanqueOxigenoEsteDisponible = True
-		if self.game_state.tanqueOxigenoOesteComprado:
-			self.game_state.tanqueOxigenoOesteDisponible = True
-		if self.game_state.tanqueOxigenoNorteComprado:
-			self.game_state.tanqueOxigenoNorteDisponible = True
-		self.game_state.oxigeno = 100
+		self.game_state.oxigeno = self.game_state.oxigeno_maximo
 		self.segundos_acumulados_oxigeno = 0
 		self.ultimo_update_oxigeno = None
 		self._generar_chatarra()
@@ -550,7 +541,20 @@ class GameScene:
 			self.segundos_acumulados_oxigeno = 0
 			return
 
-		self.segundos_acumulados_oxigeno += delta_segundos
+		jugador_mapa = self.camera.to_map(
+			self.jugador.rectangulo
+		)
+
+		dentro_zona_segura = self.zona_segura_oxigeno.collidepoint(
+			jugador_mapa.center
+		)
+
+		multiplicador_oxigeno = 1 if dentro_zona_segura else 10
+
+		self.segundos_acumulados_oxigeno += (
+			delta_segundos * multiplicador_oxigeno
+		)
+
 		puntos_perdidos = int(
 			self.segundos_acumulados_oxigeno
 			// self.SEGUNDOS_POR_PUNTO_OXIGENO
@@ -596,16 +600,11 @@ class GameScene:
 			in self.bloques_edificios.items()
 			if not getattr(self.game_state, atributo_disponible)
 		)
-		colisiones.extend(
-			rectangulo
-			for nombre, rectangulo in self.tanques_oxigeno_mapa.items()
-			if getattr(
-				self.game_state, self.campos_compra_tanques[nombre]
-			)
-		)
+		
 		return any(rectangulo_mapa.colliderect(colision) for colision in colisiones)
 
 	def update(self, teclas, limites_pantalla, eventos=()):
+		
 		if self.transicion_desmayo_inicio is not None:
 			self._actualizar_desmayo()
 			return
@@ -624,9 +623,16 @@ class GameScene:
 		):
 			return
 
-		
-		
+		for evento in eventos:
+					if evento.type == pygame.KEYDOWN and evento.key == pygame.K_i:
+						self.interfaz_estado.mostrar_inventario = (
+							not self.interfaz_estado.mostrar_inventario
+						)
 
+		if self.interfaz_estado.mostrar_inventario:
+			return
+
+					
 		rect_fondo = self.fondo.get_rect(center=limites_pantalla.center)
 		self.origen_mapa = rect_fondo.topleft
 		puerta_casa = (
@@ -723,8 +729,22 @@ class GameScene:
 			self.mensaje_antena = None
 
 		self.camera.update(
-			self.jugador.rectangulo, limites_pantalla, limites_mapa
+    self.jugador.rectangulo, limites_pantalla, limites_mapa
 		)
+
+		if self.particulas is None:
+			self.particulas = SistemaParticulas(
+				limites_pantalla.width,
+				limites_pantalla.height,
+			)
+
+		self.particulas.actualizar(
+			tormenta=self.game_state.tormenta_arena
+		)
+		self.particulas.actualizar_camara(self.camera.offset)
+		self.splash_riego.actualizar()
+		self.efecto_cosecha.actualizar()
+			
 		if self.jugador.rectangulo.collidepoint(puerta_casa):
 			self.primera_entrada = True
 			self.puerta_reentrada = "casa"
@@ -763,7 +783,6 @@ class GameScene:
 		
 		self._interactuar_con_antenas(eventos)
 		self._interactuar_con_lugares_construccion(eventos)
-		self._interactuar_con_tanques_oxigeno(eventos)
 
 		for evento in eventos:
 			if evento.type != pygame.MOUSEBUTTONDOWN or evento.button != 1:
@@ -805,12 +824,14 @@ class GameScene:
 				continue
 			self.parcela_seleccionada = parcela_clickeada
 
+			
 			if parcela_clickeada.seca:
 				if (
 					self.inventario.slot_seleccionado == Inventario.SLOT_MANO
 					and parcela_clickeada.retirar_seca()
 				):
 					self.efecto_accion.play()
+
 			elif parcela_clickeada.obtener_etapa() == "cosechable":
 				if self.inventario.slot_seleccionado == Inventario.SLOT_MANO:
 					tipo_cultivo = parcela_clickeada.planta
@@ -822,28 +843,50 @@ class GameScene:
 							getattr(self.game_state, cultivo["cosecha"])
 							+ cultivo["cantidad_cosecha"],
 						)
+						self.efecto_cosecha.crear(
+							parcela_clickeada.rectangulo.centerx,
+							parcela_clickeada.rectangulo.centery,
+						)
 						self.efecto_accion.play()
+
 			elif self.inventario.slot_seleccionado in Inventario.SLOTS_SEMILLAS:
 				tipo_cultivo = Inventario.SLOTS_SEMILLAS[
 					self.inventario.slot_seleccionado
 				]
 				semilla = CULTIVOS[tipo_cultivo]["semilla"]
-				if parcela_clickeada.planta is None and getattr(self.game_state, semilla) > 0:
+
+				if (
+					parcela_clickeada.planta is None
+					and getattr(self.game_state, semilla) > 0
+				):
 					parcela_clickeada.plantar(tipo_cultivo)
-					setattr(self.game_state, semilla, getattr(self.game_state, semilla) - 1)
+					setattr(
+						self.game_state,
+						semilla,
+						getattr(self.game_state, semilla) - 1,
+					)
 					self.efecto_accion.play()
+
 			elif self.inventario.slot_seleccionado == Inventario.SLOT_REGADERA:
 				if (
 					parcela_clickeada.planta is not None
 					and parcela_clickeada.dia_regado != self.game_state.dia_actual
 				):
 					parcela_clickeada.regar(self.game_state.dia_actual)
+					self.splash_riego.crear_splash(
+						parcela_clickeada.rectangulo.centerx,
+						parcela_clickeada.rectangulo.centery + 5,
+					)
+
+
 
 	def _mostrar_mensaje_antena(self, texto):
 		self.mensaje_antena = texto
 		self.mensaje_antena_hasta = pygame.time.get_ticks() + 3000
 
 	def _interactuar_con_antenas(self, eventos):
+		if self.game_state.centro_datos_completado:
+			return
 		jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
 		for evento in eventos:
 			if evento.type != pygame.KEYDOWN or evento.key != pygame.K_e:
@@ -899,41 +942,7 @@ class GameScene:
 				reproducir_sonido_interaccion()
 				break
 
-	def _interactuar_con_tanques_oxigeno(self, eventos):
-		if not any(
-			evento.type == pygame.KEYDOWN and evento.key == pygame.K_e
-			for evento in eventos
-		):
-			return
-
-		jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
-		for nombre, rectangulo in self.tanques_oxigeno_mapa.items():
-			if not getattr(
-				self.game_state, self.campos_compra_tanques[nombre]
-			):
-				continue
-			zona_interaccion = rectangulo.inflate(
-				self.jugador.rectangulo.width + 24,
-				self.jugador.rectangulo.height + 24,
-			)
-			if not jugador_mapa.colliderect(zona_interaccion):
-				continue
-
-			campo_uso = self.campos_uso_tanques[nombre]
-			if getattr(self.game_state, campo_uso) == self.game_state.dia_actual:
-				self._mostrar_mensaje_antena(
-					f"El {nombre} ya fue utilizado hoy."
-				)
-				break
-
-			self.game_state.oxigeno = 100
-			setattr(self.game_state, campo_uso, self.game_state.dia_actual)
-			self._mostrar_mensaje_antena(
-				f"Oxígeno recargado al máximo en el {nombre}."
-			)
-			reproducir_sonido_interaccion()
-			break
-
+	
 	def _envolver_texto_mensaje(self, texto, ancho_maximo):
 		lineas = []
 		linea = ""
@@ -993,75 +1002,174 @@ class GameScene:
 					self.sprite_bloque,
 					self.camera.apply(rectangulo.move(self.origen_mapa)),
 				)
-			for nombre, rectangulo in self.tanques_oxigeno_mapa.items():
-				if not getattr(
-					self.game_state, self.campos_compra_tanques[nombre]
-				):
-					continue
-				pantalla.blit(
-					self.sprite_oxigeno,
-					self.camera.apply(rectangulo.move(self.origen_mapa)),
-				)
+			
 		else:
 			pantalla.fill((99, 60, 58))
-		for nombre, parcelas in self.parcelas_por_nodo.items():
-			if not getattr(
-				self.game_state,
-				self.campos_disponibilidad_parcelas[nombre],
-			):
-				continue
-			if nombre in self.sprites_parcelas_mapa:
-				pantalla.blit(
-					self.sprites_parcelas_mapa[nombre],
-					self.camera.apply(
-						self.rectangulos_parcelas_mapa[nombre].move(
-							self.origen_mapa
-						)
-					),
-				)
-			for parcela in parcelas:
+		parcelas_visibles = []
+
+		if self.game_state.parcela1Disponible:
+			for parcela in self.parcelas_por_nodo["Parcela1"]:
 				parcela.dibujar(
 					pantalla,
 					self.game_state.dia_actual,
 					self.sprites_cultivos,
 					self.camera.screen_offset,
+					self.sprites_tierra,
+					dibujar_planta=False,
 				)
+				parcelas_visibles.append(parcela)
+
+
+		# Segunda pasada: dibujar los cultivos que no son tomates.
+		for parcela in parcelas_visibles:
+			if parcela.planta is None:
+				continue
+
+			nombre_cultivo = CULTIVOS[parcela.planta]["nombre"]
+
+			if nombre_cultivo != "tomate":
+				parcela.dibujar_cultivo(
+					pantalla,
+					self.sprites_cultivos,
+					self.camera.screen_offset,
+				)
+
+
+		
+		
+				
+		# Tercera pasada: dibujar las semillas detrás del jugador
+		# y ordenar los tomates crecidos por profundidad Y.
+
+		elementos_profundidad = []
+
+		for parcela in parcelas_visibles:
+			if (
+				parcela.planta is not None
+				and CULTIVOS[parcela.planta]["nombre"] == "tomate"
+			):
+				# Las semillas y los cultivos secos se dibujan antes
+				# del jugador, independientemente de su posición.
+				if parcela.dias_crecimiento == 0 or parcela.seca:
+					parcela.dibujar_cultivo(
+						pantalla,
+						self.sprites_cultivos,
+						self.camera.screen_offset,
+					)
+				else:
+					# Ajustar la profundidad para que el tomate
+					# no quede delante del jugador demasiado pronto.
+					y_profundidad = parcela.rectangulo.bottom - 8
+
+					elementos_profundidad.append(
+						(
+							y_profundidad,
+							1,
+							"tomate",
+							parcela,
+						)
+					)
+
+		# Agregar al jugador a la lista de profundidad.
+		elementos_profundidad.append(
+			(
+				self.jugador.rectangulo.bottom,
+				0,
+				"jugador",
+				None,
+			)
+		)
+
+		# Dibujar de atrás hacia adelante según la posición Y.
+		for _, _, tipo, elemento in sorted(
+			elementos_profundidad,
+			key=lambda item: (item[0], item[1]),
+		):
+			if tipo == "tomate":
+				elemento.dibujar_cultivo(
+					pantalla,
+					self.sprites_cultivos,
+					self.camera.screen_offset,
+				)
+			elif self.transicion_desmayo_inicio is None:
+				self.jugador.dibujar(
+					pantalla,
+					self.camera.screen_offset,
+				)
+
+
 		for pieza in self.chatarra:
 			pieza.dibujar(
 				pantalla, self.sprite_chatarra, self.camera.screen_offset
 			)
+
+		if self.particulas is not None:
+			self.particulas.dibujar(pantalla)
+			self.splash_riego.dibujar(
+				pantalla,
+				self.camera.screen_offset,
+			)
+			self.efecto_cosecha.dibujar(
+				pantalla,
+				self.camera.screen_offset,
+			)
+
+		if self.game_state.tormenta_arena:
+			capa_tormenta = pygame.Surface(
+				pantalla.get_size(),
+				pygame.SRCALPHA,
+			)
+			capa_tormenta.fill((190, 45, 20, 100))
+			pantalla.blit(capa_tormenta, (0, 0))
 		
-		
-		desplazamiento_mundo = self.camera.screen_offset
-		if self.transicion_desmayo_inicio is None:
-			self.jugador.dibujar(pantalla, desplazamiento_mundo)
-		else:
+		# Durante el desmayo, mantener la animación de sueño.
+		if self.transicion_desmayo_inicio is not None:
 			tiempo_transcurrido = (
 				pygame.time.get_ticks() - self.transicion_desmayo_inicio
 			)
+
 			if tiempo_transcurrido < (
 				self.DURACION_ANIMACION_SUENO + self.DURACION_FUNDIDO_SUENO
 			):
 				indice_sprite = (
 					tiempo_transcurrido // self.INTERVALO_FRAME_SUENO
 				) % len(self.sprites_sueno)
+
 				sprite_sueno = self.sprites_sueno[indice_sprite]
 				posicion_sueno = sprite_sueno.get_rect(
 					center=self.jugador.rectangulo.center
 				)
-				posicion_sueno.move_ip(desplazamiento_mundo)
+				posicion_sueno.move_ip(self.camera.screen_offset)
 				pantalla.blit(sprite_sueno, posicion_sueno)
 		
 		#for i, cuadrado in enumerate(self.cuadrados):
 			#pygame.draw.rect(pantalla, self.colores_cuadrados[i], cuadrado)
 			#pygame.draw.rect(pantalla, (30, 30, 30), cuadrado, 2)
 		
-		
+		if self.game_state.tormenta_arena:
+			capa_tormenta = pygame.Surface(
+				pantalla.get_size(),
+				pygame.SRCALPHA,
+			)
+			capa_tormenta.fill((205, 105, 45, 45))
+			pantalla.blit(capa_tormenta, (0, 0))
+
+		jugador_mapa = self.camera.to_map(
+			self.jugador.rectangulo
+		)
+
+		dentro_zona_segura = (
+			self.zona_segura_oxigeno.collidepoint(
+				jugador_mapa.center
+			)
+		)
+
 		self.interfaz_estado.dibujar(
 			pantalla,
 			self.game_state,
 			mostrar_chatarra=True,
 			mostrar_materiales=True,
+			dentro_zona_segura=dentro_zona_segura,
 		)
 		self.inventario.dibujar(pantalla, self.game_state)
 		jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
@@ -1085,38 +1193,7 @@ class GameScene:
 					indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
 				)
 				break
-		for nombre, rectangulo in self.tanques_oxigeno_mapa.items():
-			if not getattr(
-				self.game_state, self.campos_compra_tanques[nombre]
-			):
-				continue
-			zona_interaccion = rectangulo.inflate(
-				self.jugador.rectangulo.width + 24,
-				self.jugador.rectangulo.height + 24,
-			)
-			if not jugador_mapa.colliderect(zona_interaccion):
-				continue
-
-			campo_uso = self.campos_uso_tanques[nombre]
-			ya_utilizado = (
-				getattr(self.game_state, campo_uso)
-				== self.game_state.dia_actual
-			)
-			texto = (
-				f"Tanque {nombre} ya utilizado hoy"
-				if ya_utilizado
-				else f"E: recargar oxígeno - {nombre}"
-			)
-			indicacion = self.fuente.render(
-				texto, True, (255, 255, 255)
-			)
-			pantalla.blit(
-				indicacion,
-				indicacion.get_rect(
-					midtop=(pantalla.get_width() // 2, 20)
-				),
-			)
-			break
+		
 		for nombre, (x, y) in self.antenas_mapa.items():
 			zona_interaccion = pygame.Rect(x - 32, y - 32, 64, 64)
 			jugador_mapa = self.camera.to_map(self.jugador.rectangulo)

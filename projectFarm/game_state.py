@@ -13,18 +13,13 @@ class GameState:
         self.tomates_cosechadas = 0
         self.repollos_cosechadas = 0
         self.oxigeno = 100
-        self.dia_uso_tanque_oeste = None
-        self.dia_uso_tanque_norte = None
-        self.dia_uso_tanque_este = None
-        self.tanqueOxigenoEsteComprado = False
-        self.tanqueOxigenoOesteComprado = False
-        self.tanqueOxigenoNorteComprado = False
-        self.tanqueOxigenoEsteDisponible = False
-        self.tanqueOxigenoOesteDisponible = False
-        self.tanqueOxigenoNorteDisponible = False
-        self.creditos = 0
+        self.oxigeno_maximo = 100
+        self.oxigenoMaximo1Comprado = False
+        self.oxigenoMaximo2Comprado = False
+        self.oxigenoMaximo3Comprado = False
+        self.creditos = 1000
         self.chatarra = 0
-        self.materiales = 0
+        self.materiales = 1000
         self.parcela1Comprada = True
         self.parcela1Disponible = True
         self.parcela2Comprada = False
@@ -55,5 +50,11 @@ class GameState:
         self.antena_objetivo = None
         self.antena_encontrada = False
         self.datos_antena_enviados = False
+        self.progreso_centro_datos = 0
+        self.centro_datos_completado = False
+        self.descargaDatos1Comprado = False
+        self.descargaDatos2Comprado = False
         self.correos_recibidos = []
         self.correos_leidos = []
+        self.tormenta_arena = False
+        

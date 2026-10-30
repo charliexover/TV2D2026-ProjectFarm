@@ -16,13 +16,10 @@
 </data>
  </layer>
  <objectgroup id="2" name="Nodos">
-  <object id="1" name="Parcela1" x="80.6667" y="99">
-   <point/>
-  </object>
   <object id="2" name="GuantesReforzados" x="68.3333" y="116.333">
    <point/>
   </object>
-  <object id="3" name="TanqueOxigeno1" x="93.6667" y="116.333">
+  <object id="3" name="OxigenoMaximo1" x="93.6667" y="116.333">
    <point/>
   </object>
   <object id="4" name="CentroDatos" x="64" y="84.3333">
@@ -43,12 +40,6 @@
   <object id="10" name="SemillaRepollo" x="26.3334" y="129.333">
    <point/>
   </object>
-  <object id="13" name="Parcela2" x="79.3333" y="57.3333">
-   <point/>
-  </object>
-  <object id="14" name="Parcela3" x="67" y="48">
-   <point/>
-  </object>
   <object id="15" name="CintaReciclaje1" x="112.666" y="68">
    <point/>
   </object>
@@ -61,10 +52,10 @@
   <object id="18" name="DescargaDatos2" x="32" y="61">
    <point/>
   </object>
-  <object id="19" name="TanqueOxigeno2" x="111" y="128.667">
+  <object id="19" name="OxigenoMaximo2" x="111" y="128.667">
    <point/>
   </object>
-  <object id="20" name="TanqueOxigeno3" x="128.333" y="117">
+  <object id="20" name="OxigenoMaximo3" x="128.333" y="117">
    <point/>
   </object>
   <object id="21" name="OxigenoMaximo" x="38.3333" y="104.334">

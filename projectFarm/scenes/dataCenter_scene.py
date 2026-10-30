@@ -47,6 +47,13 @@ class DataCenterScene:
         self.mensaje_antena = None
 
     def interactuar_pc(self):
+        if self.game_state.centro_datos_completado:
+            self.mensaje_antena = (
+                "Centro de Datos completado. "
+                "Todos los datos han sido recopilados."
+            )
+            return
+
         if self.game_state.dia_mision_antena != self.game_state.dia_actual:
             self.game_state.dia_mision_antena = self.game_state.dia_actual
             self.game_state.antena_objetivo = random.choice(
@@ -57,16 +64,42 @@ class DataCenterScene:
 
         if self.game_state.datos_antena_enviados:
             self.mensaje_antena = "Los datos de hoy ya fueron enviados."
+
         elif self.game_state.antena_encontrada:
-            self.game_state.creditos += 25
+            incremento = 2
+
+            if self.game_state.descargaDatos1Comprado:
+                incremento += 3
+
+            if self.game_state.descargaDatos2Comprado:
+                incremento += 4
+
+            self.game_state.progreso_centro_datos = min(
+                100,
+                self.game_state.progreso_centro_datos + incremento,
+            )
             self.game_state.datos_antena_enviados = True
-            self.mensaje_antena = "Datos enviados. +25 creditos."
+
+            if self.game_state.progreso_centro_datos >= 100:
+                self.game_state.centro_datos_completado = True
+                self.game_state.creditos += 1000
+                self.mensaje_antena = (
+                    "¡Centro de Datos completado! "
+                    "Todos los datos han sido recopilados. 1000 creditos entregados."
+                )
+            else:
+                self.mensaje_antena = (
+                    f"Datos enviados correctamente. "
+                    f"Descarga: {self.game_state.progreso_centro_datos}%."
+                )
+
         else:
             self.mensaje_antena = (
-                f"Datos pendientes en Antena: {self.game_state.antena_objetivo}. "
+                f"Datos pendientes en Antena: "
+                f"{self.game_state.antena_objetivo}. "
                 "Descarga los datos y vuelve a esta PC."
             )
-        
+            
     def _envolver_texto_mensaje(self, texto, ancho_maximo):
         lineas = []
         linea = ""
@@ -80,6 +113,54 @@ class DataCenterScene:
         if linea:
             lineas.append(linea)
         return lineas
+
+    def dibujar_barra_descarga(self, pantalla):
+        ancho = 300
+        alto = 24
+
+        x = (pantalla.get_width() - ancho) // 2
+        y = 70
+
+        progreso = self.game_state.progreso_centro_datos
+        progreso = max(0, min(100, progreso))
+
+        # Fondo de la barra
+        barra_fondo = pygame.Rect(x, y, ancho, alto)
+        pygame.draw.rect(pantalla, (35, 35, 35), barra_fondo)
+
+        # Progreso de descarga
+        ancho_progreso = int(ancho * progreso / 100)
+        if ancho_progreso > 0:
+            pygame.draw.rect(
+                pantalla,
+                (80, 220, 120),
+                pygame.Rect(x, y, ancho_progreso, alto),
+            )
+
+        # Borde
+        pygame.draw.rect(
+            pantalla,
+            (255, 255, 255),
+            barra_fondo,
+            2,
+        )
+
+        if self.game_state.centro_datos_completado:
+            texto = "Centro de Datos: COMPLETADO"
+        else:
+            texto = f"Enviando datos... {progreso}%"
+
+        superficie_texto = self.fuente.render(
+            texto,
+            True,
+            (255, 255, 255),
+        )
+        pantalla.blit(
+            superficie_texto,
+            superficie_texto.get_rect(
+                center=(pantalla.get_width() // 2, y - 18)
+            ),
+        )
 
     def _cargar_fondo(self):
         ruta_fondo = os.path.join(
@@ -159,7 +240,7 @@ class DataCenterScene:
             mostrar_procesamiento=True,
             mostrar_materiales=True,
         )
-
+        self.dibujar_barra_descarga(pantalla)
         salida = self.obtener_salida(limites_pantalla)
         self.jugador.dibujar(pantalla)
         if self.jugador.rectangulo.colliderect(salida):

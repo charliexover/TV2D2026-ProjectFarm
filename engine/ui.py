@@ -1,7 +1,7 @@
 import os
 
 import pygame
-
+import math
 
 class Inventario:
 	SLOT_MANO = 0
@@ -199,6 +199,9 @@ class Inventario:
 
 class InterfazEstado:
 	def __init__(self):
+		self.tiempo_animacion_danger = 0
+		self.escala_danger = 1.0
+		self.mostrar_inventario = False
 		ruta_reloj = os.path.join(
 			os.path.dirname(__file__), "..", "projectFarm", "assets", "reloj.png"
 		)
@@ -242,13 +245,147 @@ class InterfazEstado:
 		self.sprite_oxigeno = pygame.transform.scale(
 			pygame.image.load(ruta_oxigeno).convert_alpha(), (24, 24)
 		)
+		ruta_hud_oxigeno = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"hudOxigeno.png",
+		)
+
+		self.sprite_hud_oxigeno = pygame.transform.scale(
+			pygame.image.load(ruta_hud_oxigeno).convert_alpha(),
+			(135, 135),
+		)
+
+		ruta_safe = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"statusSafe.png",
+		)
+
+		ruta_danger = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"statusDanger.png",
+		)
+
+		self.sprite_safe = pygame.transform.scale_by(
+			pygame.image.load(ruta_safe).convert_alpha(),
+			3,
+		)
+
+		self.sprite_danger = pygame.transform.scale_by(
+			pygame.image.load(ruta_danger).convert_alpha(),
+			3,
+		)
+
+		ruta_fondo = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"inventoryHud.png",
+		)
+
+		self.sprite_fondo_inventario = pygame.transform.scale(
+			pygame.image.load(ruta_fondo).convert_alpha(),
+			(320, 310),
+		)
 
 	def _cargar_icono_cosecha(self, nombre_archivo):
-		ruta_icono = os.path.join(
-			os.path.dirname(__file__), "..", "projectFarm", "assets", nombre_archivo
+				ruta_icono = os.path.join(
+					os.path.dirname(__file__), "..", "projectFarm", "assets", nombre_archivo
+				)
+				return pygame.transform.scale(
+					pygame.image.load(ruta_icono).convert_alpha(), (24, 24)
+				)	
+
+	def dibujar_inventario(self, pantalla, game_state):
+		ancho = 320
+		alto = 310
+
+		ventana = pygame.Rect(
+			(pantalla.get_width() - ancho) // 2,
+			(pantalla.get_height() - alto) // 2,
+			ancho,
+			alto,
 		)
-		return pygame.transform.scale(
-			pygame.image.load(ruta_icono).convert_alpha(), (24, 24)
+
+		pantalla.blit(
+			self.sprite_fondo_inventario,
+			ventana.topleft,
+		)
+
+		titulo = self.fuente.render(
+			"RECURSOS",
+			True,
+			(255, 255, 255),
+		)
+		pantalla.blit(titulo, (ventana.x + 20, ventana.y + 12))
+
+		recursos = [
+			(
+				self.sprite_zanahoria,
+				"Zanahorias",
+				game_state.zanahorias_cosechadas,
+			),
+			(
+				self.sprites_cosechas["papas_cosechadas"],
+				"Papas",
+				game_state.papas_cosechadas,
+			),
+			(
+				self.sprites_cosechas["tomates_cosechadas"],
+				"Tomates",
+				game_state.tomates_cosechadas,
+			),
+			(
+				self.sprites_cosechas["repollos_cosechadas"],
+				"Repollos",
+				game_state.repollos_cosechadas,
+			),
+			(
+				self.sprite_materiales,
+				"Materiales",
+				game_state.materiales,
+			),
+			(
+				self.sprite_chatarra,
+				"Chatarra",
+				game_state.chatarra,
+			),
+		]
+
+		y = ventana.y + 48
+
+		for icono, nombre, cantidad in recursos:
+			pantalla.blit(icono, (ventana.x + 20, y))
+
+			texto = self.fuente.render(
+				f"{nombre}: {cantidad}",
+				True,
+				(255, 255, 255),
+			)
+			pantalla.blit(texto, (ventana.x + 55, y + 2))
+
+			y += 40
+
+		# Instrucción para cerrar
+		ayuda = pygame.font.Font(None, 22).render(
+			"I: cerrar",
+			True,
+			(200, 200, 200),
+		)
+		pantalla.blit(
+			ayuda,
+			ayuda.get_rect(
+				midbottom=(ventana.centerx, ventana.bottom - 8)
+			),
 		)
 
 	def dibujar(
@@ -259,15 +396,128 @@ class InterfazEstado:
 		mostrar_procesamiento=False,
 		mostrar_materiales=False,
 		y_inicial=46,
+		dentro_zona_segura=True,
 	):
 		lineas = []
-		pantalla.blit(self.sprite_reloj, (10, 10))
-		texto_dia = self.fuente.render(
-			str(game_state.dia_actual), True, (255, 255, 255)
-		)
-		pantalla.blit(texto_dia, (42, 20))
+		# Panel del HUD: día, oxígeno y créditos
+		escala = 3
+		posicion_x = pantalla.get_width() - self.sprite_hud_oxigeno.get_width() - 10
+		posicion_y = 10
 
-		y = y_inicial
+		rect_hud = self.sprite_hud_oxigeno.get_rect(
+			topleft=(posicion_x, posicion_y)
+		)
+
+		# Dibujar primero el panel de fondo
+		pantalla.blit(self.sprite_hud_oxigeno, rect_hud)
+
+		# Día actual
+		texto_dia = self.fuente.render(
+			str(game_state.dia_actual),
+			True,
+			(255, 255, 255),
+		)
+		pantalla.blit(
+			texto_dia,
+			(posicion_x + 40, posicion_y + 20),
+		)
+
+		# Barra de oxígeno
+		ancho_barra = 37 * escala
+		alto_barra = 5 * escala
+
+		rect_barra = pygame.Rect(
+			posicion_x + 4 * escala,
+			posicion_y + 15 * escala,
+			ancho_barra,
+			alto_barra,
+		)
+
+		# Fondo de la barra
+		pygame.draw.rect(
+			pantalla,
+			(35, 43, 48),
+			rect_barra,
+		)
+
+		# Porcentaje de oxígeno restante según el máximo actual
+		oxigeno_maximo = max(1, game_state.oxigeno_maximo)
+
+		porcentaje_oxigeno = max(
+			0,
+			min(1, game_state.oxigeno / oxigeno_maximo),
+		)
+
+		ancho_relleno = round(
+			ancho_barra * porcentaje_oxigeno,
+		)
+
+		color_oxigeno = (
+			(75, 200, 245)
+			if dentro_zona_segura
+			else (245, 105, 70)
+		)
+
+		if ancho_relleno > 0:
+			pygame.draw.rect(
+				pantalla,
+				color_oxigeno,
+				(
+					rect_barra.x,
+					rect_barra.y,
+					ancho_relleno,
+					alto_barra,
+				),
+			)
+
+		# Indicador de zona segura, debajo de los créditos
+		if dentro_zona_segura:
+			sprite_estado = self.sprite_safe
+			escala_estado = 1.0
+		else:
+			sprite_estado = self.sprite_danger
+
+			tiempo = pygame.time.get_ticks() / 250
+			escala_estado = 1.0 + 0.08 * (
+				(1 + math.sin(tiempo)) / 2
+			)
+
+		ancho = max(1, int(sprite_estado.get_width() * escala_estado))
+		alto = max(1, int(sprite_estado.get_height() * escala_estado))
+
+		sprite_animado = pygame.transform.scale(
+			sprite_estado,
+			(ancho, alto),
+		)
+
+		# Centrar el indicador debajo de los créditos
+		centro_x = posicion_x + self.sprite_hud_oxigeno.get_width() // 2
+		posicion_indicador_y = posicion_y + 95 + 5
+
+		rect_estado = sprite_animado.get_rect(
+			midtop=(centro_x, posicion_indicador_y)
+		)
+
+		pantalla.blit(sprite_animado, rect_estado)
+
+		# Créditos
+		pantalla.blit(
+			self.sprite_creditos,
+			(posicion_x + 6, posicion_y + 65),
+		)
+
+		texto_creditos = self.fuente.render(
+			str(game_state.creditos),
+			True,
+			(255, 255, 255),
+		)
+
+		pantalla.blit(
+			texto_creditos,
+			(posicion_x + 30, posicion_y + 70),
+		)
+
+		""" y = y_inicial
 		pantalla.blit(self.sprite_zanahoria, (10, y))
 		cantidad_zanahorias = self.fuente.render(
 			str(game_state.zanahorias_cosechadas), True, (255, 255, 255)
@@ -283,19 +533,7 @@ class InterfazEstado:
 			pantalla.blit(cantidad, (42, y + 6))
 			y += 34
 
-		pantalla.blit(self.sprite_oxigeno, (10, y))
-		cantidad_oxigeno = self.fuente.render(
-			str(game_state.oxigeno), True, (255, 255, 255)
-		)
-		pantalla.blit(cantidad_oxigeno, (42, y + 5))
-		y += 34
-
-		pantalla.blit(self.sprite_creditos, (10, y))
-		cantidad_creditos = self.fuente.render(
-			str(game_state.creditos), True, (255, 255, 255)
-		)
-		pantalla.blit(cantidad_creditos, (42, y + 5))
-		y += 34
+		
 
 		if mostrar_chatarra:
 			pantalla.blit(self.sprite_chatarra, (10, y))
@@ -311,7 +549,7 @@ class InterfazEstado:
 				str(game_state.materiales), True, (255, 255, 255)
 			)
 			pantalla.blit(cantidad_materiales, (42, y + 5))
+ """	
 
-		for texto, posicion_y in lineas:
-			superficie = self.fuente.render(texto, True, (255, 255, 255))
-			pantalla.blit(superficie, (10, posicion_y))
+		if self.mostrar_inventario:
+			self.dibujar_inventario(pantalla, game_state)

@@ -13,10 +13,9 @@ class GameLoop:
 
         while ejecutando:
             eventos = pygame.event.get()
+
             for evento in eventos:
                 if evento.type == pygame.QUIT:
-                    ejecutando = False
-                elif evento.type == pygame.KEYDOWN and evento.key == pygame.K_ESCAPE:
                     ejecutando = False
 
             teclas = pygame.key.get_pressed()

@@ -9,7 +9,7 @@ from pytmx.util_pygame import load_pygame
 from engine.audio import reproducir_sonido_interaccion
 from engine.ui import InterfazEstado
 from projectFarm.entities import Jugador, Rover
-from projectFarm.recompensasExpe import SistemaRecompensas
+from projectFarm.recompensasExpe import SistemaRecompensas, HITOS_ROVER
 
 
 class ExpeditionScene:
@@ -65,6 +65,8 @@ class ExpeditionScene:
         self.mensaje_rover = ""
         self.tiempo_mensaje_rover = 0
         self.DURACION_MENSAJE_ROVER = 4000  # 4 segundos
+        self.ventana_hitos_rover = False
+        self.creditos_hitos_mensaje = 0
         self.primera_entrada = True
         self.al_salir = al_salir
         self.fuente = pygame.font.Font(None, 28)
@@ -131,53 +133,41 @@ class ExpeditionScene:
         ruta_assets = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "..", "assets")
         )
-        ruta_mapa_monitor = os.path.join(ruta_assets, "MapMonitor.tmx")
-        mapa_monitor = load_pygame(ruta_mapa_monitor)
-        self.fondo_monitor = self._renderizar_mapa(mapa_monitor)
-        self.zona_mars_monitor = self._cargar_zona_mars(ruta_mapa_monitor)
+
+        # Cargar el fondo del monitor.
+        ruta_fondo = os.path.join(ruta_assets, "MapMonitor.png")
+        imagen_fondo = pygame.image.load(ruta_fondo).convert_alpha()
+
+        self.fondo_monitor = pygame.transform.scale(
+            imagen_fondo,
+            (
+                imagen_fondo.get_width() * self.ESCALA,
+                imagen_fondo.get_height() * self.ESCALA,
+            ),
+        )
+
+        # Zona visible donde se muestra el mapa de Marte.
+        # Los valores se expresan en píxeles de pantalla.
+        self.zona_mars_monitor = pygame.Rect(
+            30,  # X
+            24,  # Y
+            396,  # Ancho
+            260,  # Alto
+        )
+
+        # Imagen del planeta.
         self.imagen_mars = pygame.image.load(
             os.path.join(ruta_assets, "MarsPlanet.png")
         ).convert_alpha()
+
         self.posicion_mars = pygame.Vector2(
             self.zona_mars_monitor.centerx - self.imagen_mars.get_width() // 2,
             self.zona_mars_monitor.centery - self.imagen_mars.get_height() // 2,
         )
+
         self._limitar_posicion_mars()
 
-    def _cargar_zona_mars(self, ruta_mapa_monitor):
-        raiz_mapa = ET.parse(ruta_mapa_monitor).getroot()
-        capa_monitor = next(
-            (
-                capa
-                for capa in raiz_mapa.findall("objectgroup")
-                if capa.attrib.get("name") == "Monitor"
-            ),
-            None,
-        )
-        if capa_monitor is None:
-            raise ValueError(
-                "No se encontró la capa de objetos 'Monitor'."
-            )
-
-        objeto_mars = next(
-            (
-                objeto
-                for objeto in capa_monitor.findall("object")
-                if objeto.attrib.get("name") == "Mars"
-            ),
-            None,
-        )
-        if objeto_mars is None:
-            raise ValueError(
-                "No se encontró la zona 'Mars' en la capa 'Monitor'."
-            )
-
-        return pygame.Rect(
-            round(float(objeto_mars.attrib["x"]) * self.ESCALA),
-            round(float(objeto_mars.attrib["y"]) * self.ESCALA),
-            round(float(objeto_mars.attrib["width"]) * self.ESCALA),
-            round(float(objeto_mars.attrib["height"]) * self.ESCALA),
-        )
+    
 
     def _limitar_posicion_mars(self):
         self.posicion_mars.x = min(
@@ -196,14 +186,27 @@ class ExpeditionScene:
         )
 
     def _obtener_rectangulo_monitor(self, limites_pantalla):
-        return self.fondo_monitor.get_rect(center=limites_pantalla.center)
+        rect_monitor = self.fondo_monitor.get_rect(
+            center=limites_pantalla.center
+        )
+
+        # Desplazar el monitor hacia arriba.
+        rect_monitor.y -= 90
+
+        return rect_monitor
 
     def _obtener_botones_monitor(self, rect_monitor):
-        y = rect_monitor.bottom - 29
-        return (
-            pygame.Rect(rect_monitor.left + 30, y, 180, 26),
-            pygame.Rect(rect_monitor.right - 210, y, 180, 26),
+        y = rect_monitor.bottom + 190 - 29
+        ancho = min(220, rect_monitor.width - 20)
+
+        boton_enviar = pygame.Rect(
+            rect_monitor.centerx - ancho // 2,
+            y,
+            ancho,
+            24,
         )
+
+        return boton_enviar, pygame.Rect(0, 0, 0, 0)
 
     def _iniciar_expedicion(self, destino):
         expedicion = self.EXPEDICIONES[destino]
@@ -400,6 +403,30 @@ class ExpeditionScene:
         )
         area_interaccion_pc = pc.inflate(40, 40)
 
+        # Ventana de hitos del Rover.
+        if self.ventana_hitos_rover:
+            for evento in eventos:
+                if evento.type == pygame.KEYDOWN:
+                    if evento.key in (pygame.K_e, pygame.K_ESCAPE):
+                        self.ventana_hitos_rover = False
+
+                elif evento.type == pygame.MOUSEBUTTONDOWN:
+                    if evento.button == 1:
+                        rect_ventana = self._obtener_rectangulo_hitos(
+                            limites_pantalla
+                        )
+                        rect_cerrar = pygame.Rect(
+                            rect_ventana.right - 35,
+                            rect_ventana.top + 10,
+                            25,
+                            25,
+                        )
+
+                        if rect_cerrar.collidepoint(evento.pos):
+                            self.ventana_hitos_rover = False
+
+            return
+
         if self.monitor_abierto:
             rect_monitor = self._obtener_rectangulo_monitor(limites_pantalla)
             zona_mars = self.zona_mars_monitor.move(rect_monitor.topleft)
@@ -489,22 +516,14 @@ class ExpeditionScene:
             if self.jugador.rectangulo.colliderect(zona_rover):
                 reproducir_sonido_interaccion()
 
-                creditos, hitos = (
+                creditos, _ = (
                     self.sistema_recompensas
                     .reclamar_recompensas_rover(self.game_state)
                 )
 
-                if creditos > 0:
-                    mensaje = (
-                        f"¡Buen trabajo, la agencia te condece {creditos} créditos por las muestras recogidas! "
-                    )
-                else:
-                    mensaje = (
-                        "Todo normal por aqui. "
-                    )
-
-                self.mensaje_rover = mensaje
-                self.tiempo_mensaje_rover = pygame.time.get_ticks()
+                self.creditos_hitos_mensaje = creditos
+                self.ventana_hitos_rover = True
+                return
 
         rect_previo = self.jugador.rectangulo.copy()
 
@@ -583,11 +602,18 @@ class ExpeditionScene:
                     rect_monitor.top + round(self.posicion_mars.y),
                 ),
             )
-            for _, (x, y) in self.PUNTOS_INTERES:
+            for nombre, (x, y) in self.PUNTOS_INTERES:
                 posicion_marcador = (
                     rect_monitor.left + round(self.posicion_mars.x) + x,
                     rect_monitor.top + round(self.posicion_mars.y) + y,
                 )
+
+                color = (
+                    (70, 210, 130)
+                    if nombre == "Colonia Marciana"
+                    else (220, 35, 35)
+                )
+
                 pygame.draw.circle(
                     pantalla,
                     (255, 255, 255),
@@ -596,7 +622,7 @@ class ExpeditionScene:
                 )
                 pygame.draw.circle(
                     pantalla,
-                    (220, 35, 35),
+                    color,
                     posicion_marcador,
                     self.RADIO_MARCADOR,
                 )
@@ -616,7 +642,10 @@ class ExpeditionScene:
         self.rover.dibujar(pantalla, rect_fondo.topleft)
         self.jugador.dibujar(pantalla)
         self.interfaz_estado.dibujar(pantalla, self.game_state)
-
+        if self.ventana_hitos_rover:
+            self._dibujar_ventana_hitos_rover(pantalla)
+            return
+        
         if self.mensaje_rover:
             texto = self.fuente.render(
                 self.mensaje_rover,
@@ -661,109 +690,604 @@ class ExpeditionScene:
             )
 
     def _dibujar_panel_expediciones(self, pantalla, rect_monitor):
-        y = self.zona_mars_monitor.bottom + rect_monitor.top + 25
-        panel = pygame.Rect(
-            rect_monitor.left + 4,
-            y - 8,
-            rect_monitor.width - 8,
-            rect_monitor.bottom - y - 4,
-        )
-        pygame.draw.rect(pantalla, (0, 0, 0), panel)
+        # Colores de la interfaz.
+        fondo = (13, 20, 30)
+        borde = (54, 85, 105)
+        azul = (75, 190, 230)
+        blanco = (230, 240, 245)
+        gris = (145, 165, 180)
+        verde = (70, 210, 130)
+        amarillo = (245, 195, 75)
 
-        muestras = (
-            f"Muestras Totales: tierra {self.game_state.muestras_tierra} | "
-            f"atmósfera {self.game_state.muestras_atmosfera} | "
-            f"minerales {self.game_state.minerales_recogidos}"
+        # Fuentes del panel.
+        fuente_titulo = pygame.font.Font(None, 22)
+        fuente_datos = pygame.font.Font(None, 18)
+        fuente_pequena = pygame.font.Font(None, 16)
+
+        # Panel inferior, separado del monitor principal.
+        y = rect_monitor.bottom + 10
+
+        panel = pygame.Rect(
+            rect_monitor.left,
+            y,
+            rect_monitor.width,
+            180,
+        )
+
+        # Fondo y bordes.
+        pygame.draw.rect(pantalla, fondo, panel)
+        pygame.draw.rect(pantalla, borde, panel, 1)
+
+        # Línea decorativa superior.
+        pygame.draw.line(
+            pantalla,
+            azul,
+            (panel.left + 2, panel.top + 1),
+            (panel.right - 2, panel.top + 1),
+            2,
+        )
+
+        # Encabezado.
+        encabezado = fuente_titulo.render(
+            "INFORME DE EXPLORACION",
+            True,
+            azul,
         )
         pantalla.blit(
-            self.fuente_monitor.render(muestras, True, (255, 255, 255)),
-            (rect_monitor.left + 8, y),
+            encabezado,
+            (panel.left + 10, panel.top + 6),
         )
 
+        # Indicador de conexión.
+        pygame.draw.circle(
+            pantalla,
+            verde,
+            (panel.right - 15, panel.top + 15),
+            4,
+        )
+
+        # Separador del encabezado.
+        pygame.draw.line(
+            pantalla,
+            borde,
+            (panel.left + 8, panel.top + 27),
+            (panel.right - 8, panel.top + 27),
+        )
+
+        # --------------------------------------------------
+        # Muestras recopiladas.
+        # --------------------------------------------------
+        muestras = (
+            ("TIERRA", self.game_state.muestras_tierra),
+            ("ATMOSFERA", self.game_state.muestras_atmosfera),
+            ("MINERALES", self.game_state.minerales_recogidos),
+        )
+
+        margen = 10
+        separacion = 6
+        ancho_tarjeta = (
+            panel.width - margen * 2 - separacion * 2
+        ) // 3
+
+        y_tarjetas = panel.top + 34
+        alto_tarjeta = 34
+
+        for indice, (nombre, cantidad) in enumerate(muestras):
+            x = (
+                panel.left
+                + margen
+                + indice * (ancho_tarjeta + separacion)
+            )
+
+            tarjeta = pygame.Rect(
+                x,
+                y_tarjetas,
+                ancho_tarjeta,
+                alto_tarjeta,
+            )
+
+            pygame.draw.rect(
+                pantalla,
+                (22, 34, 47),
+                tarjeta,
+            )
+            pygame.draw.rect(
+                pantalla,
+                borde,
+                tarjeta,
+                1,
+            )
+
+            etiqueta = fuente_pequena.render(
+                nombre,
+                True,
+                gris,
+            )
+            valor = fuente_datos.render(
+                str(cantidad),
+                True,
+                blanco,
+            )
+
+            pantalla.blit(
+                etiqueta,
+                (tarjeta.left + 5, tarjeta.top + 3),
+            )
+            pantalla.blit(
+                valor,
+                (tarjeta.left + 5, tarjeta.top + 16),
+            )
+
+        # --------------------------------------------------
+        # Estado actual del Rover.
+        # --------------------------------------------------
+        y_estado = y_tarjetas + alto_tarjeta + 8
+
         destino_activo = self.game_state.expedicion_activa
+
         if destino_activo is None:
-            estado = "Rover disponible para enviar"
+            color_estado = verde
+            texto_estado = "ROVER DISPONIBLE"
         else:
             expedicion_activa = self.EXPEDICIONES[destino_activo]
+
             dias_restantes = max(
                 0,
                 self.game_state.dia_finalizacion_expedicion
                 - self.game_state.dia_actual,
             )
-            estado = (
-                f"Rover en {expedicion_activa['nombre']}: "
-                f"{dias_restantes} días restantes"
+
+            color_estado = amarillo
+            texto_estado = (
+                f"EN MISION: {expedicion_activa['nombre']} "
+                f"({dias_restantes} dias)"
             )
-        pantalla.blit(
-            self.fuente_monitor.render(estado, True, (255, 255, 255)),
-            (rect_monitor.left + 8, y + 20),
+
+        pygame.draw.circle(
+            pantalla,
+            color_estado,
+            (panel.left + 16, y_estado + 7),
+            4,
         )
 
+        pantalla.blit(
+            fuente_datos.render(
+                texto_estado,
+                True,
+                color_estado,
+            ),
+            (panel.left + 27, y_estado),
+        )
+
+        # --------------------------------------------------
+        # Resultado de la última expedición.
+        # --------------------------------------------------
         mensaje = self.game_state.resultado_ultima_expedicion
+
         if mensaje:
-            pantalla.blit(
-                self.fuente_monitor.render(
-                    mensaje, True, (255, 235, 150)
-                ),
-                (rect_monitor.left + 8, y + 38),
+            texto_mensaje = fuente_pequena.render(
+                mensaje,
+                True,
+                amarillo,
             )
 
+            # Evitar que el texto sobresalga del panel.
+            ancho_maximo = panel.width - 20
+
+            if texto_mensaje.get_width() > ancho_maximo:
+                texto_mensaje = pygame.transform.scale(
+                    texto_mensaje,
+                    (
+                        ancho_maximo,
+                        texto_mensaje.get_height(),
+                    ),
+                )
+
+            pantalla.blit(
+                texto_mensaje,
+                (panel.left + 10, y_estado + 16),
+            )
+
+        # Límite inferior de la zona de información.
+        limite_informacion = panel.bottom - 38
+        desplazamiento_detalles = 30 if mensaje else 16
+        # --------------------------------------------------
+        # Detalles de la expedición seleccionada.
+        # --------------------------------------------------
         destino_seleccionado = self.DESTINO_POR_LUGAR.get(
             self.punto_seleccionado
         )
-        if destino_seleccionado is None:
-            if self.punto_seleccionado is not None:
+
+        if (
+            self.punto_seleccionado is not None
+            and destino_seleccionado is None
+        ):
+            pantalla.blit(
+                fuente_pequena.render(
+                    self.punto_seleccionado,
+                    True,
+                    blanco,
+                ),
+                (panel.left + 10, y_estado + desplazamiento_detalles),
+            )
+
+        if destino_seleccionado is not None:
+            expedicion = self.EXPEDICIONES[destino_seleccionado]
+
+            detalles = (
+                f"{expedicion['nombre']} | "
+                f"{expedicion['dias']} dias | "
+                f"{expedicion['coste']} creditos"
+            )
+
+            recompensa = expedicion["recompensas"]
+
+            texto_detalles = fuente_pequena.render(
+                detalles,
+                True,
+                blanco,
+            )
+
+            texto_recompensas = fuente_pequena.render(
+                f"TIERRA +{recompensa[0]}  |  "
+                f"ATMOSFERA +{recompensa[1]}  |  "
+                f"MINERALES +{recompensa[2]}",
+                True,
+                gris,
+            )
+
+            y_detalles = y_estado + desplazamiento_detalles
+            y_recompensas = y_detalles + 14
+
+            if y_recompensas + texto_recompensas.get_height() <= limite_informacion:
                 pantalla.blit(
-                    self.fuente_monitor.render(
-                        self.punto_seleccionado, True, (255, 255, 255)
-                    ),
-                    (rect_monitor.left + 8, y + 58),
+                    texto_detalles,
+                    (panel.left + 10, y_detalles),
                 )
-            return
 
-        expedicion = self.EXPEDICIONES[destino_seleccionado]
-        resumen = (
-            f"{expedicion['nombre']} ({expedicion['tipo']}): "
-            f"{expedicion['dias']} días, {expedicion['coste']} créditos "
-        )
-        recompensa = expedicion["recompensas"]
-        resumen_recompensa = (
-            f"Posible muestras: {recompensa[0]} tierra / {recompensa[1]} atmósfera / "
-            f"{recompensa[2]} minerales"
-        )
-        pantalla.blit(
-            self.fuente_monitor.render(resumen, True, (255, 255, 255)),
-            (rect_monitor.left + 8, y + 56),
-        )
-        pantalla.blit(
-            self.fuente_monitor.render(
-                resumen_recompensa, True, (255, 255, 255)
-            ),
-            (rect_monitor.left + 8, y + 73),
+                pantalla.blit(
+                    texto_recompensas,
+                    (panel.left + 10, y_recompensas),
+                )
+            elif y_detalles + texto_detalles.get_height() <= limite_informacion:
+                pantalla.blit(
+                    texto_detalles,
+                    (panel.left + 10, y_detalles),
+                )
+
+        # --------------------------------------------------
+        # Botón de confirmar envío.
+        # --------------------------------------------------
+        boton_enviar, _ = self._obtener_botones_monitor(rect_monitor)
+
+        alto_boton = 24
+        margen_inferior = 5
+        ancho_boton = min(220, panel.width - 20)
+
+        boton_enviar = pygame.Rect(
+            panel.centerx - ancho_boton // 2,
+            panel.bottom - alto_boton - margen_inferior,
+            ancho_boton,
+            alto_boton,
         )
 
-        boton_enviar, boton_cancelar = self._obtener_botones_monitor(
-            rect_monitor
-        )
         puede_enviar = (
-            destino_activo is None
-            and self.game_state.creditos >= expedicion["coste"]
+            destino_seleccionado is not None
+            and destino_activo is None
+            and self.game_state.creditos
+            >= self.EXPEDICIONES[destino_seleccionado]["coste"]
         )
+
         self._dibujar_boton(
             pantalla,
             boton_enviar,
-            "Confirmar envío",
+            "CONFIRMAR ENVIO",
             puede_enviar,
         )
 
     def _dibujar_boton(self, pantalla, rectangulo, texto, habilitado):
-        color = (35, 110, 55) if habilitado else (70, 70, 70)
-        pygame.draw.rect(pantalla, color, rectangulo)
-        pygame.draw.rect(pantalla, (255, 255, 255), rectangulo, 1)
-        etiqueta = self.fuente_monitor.render(
-            texto, True, (255, 255, 255)
+        if texto == "CONFIRMAR ENVIO":
+            color_fondo = (
+                (25, 105, 75)
+                if habilitado
+                else (40, 48, 57)
+            )
+            color_borde = (
+                (75, 220, 150)
+                if habilitado
+                else (75, 85, 95)
+            )
+            color_texto = (
+                (220, 255, 235)
+                if habilitado
+                else (125, 135, 145)
+            )
+        else:
+            color_fondo = (35, 45, 58)
+            color_borde = (90, 115, 135)
+            color_texto = (200, 215, 225)
+
+        pygame.draw.rect(
+            pantalla,
+            color_fondo,
+            rectangulo,
         )
+
+        pygame.draw.rect(
+            pantalla,
+            color_borde,
+            rectangulo,
+            1,
+        )
+
+        etiqueta = pygame.font.Font(None, 18).render(
+            texto,
+            True,
+            color_texto,
+        )
+
         pantalla.blit(
             etiqueta,
             etiqueta.get_rect(center=rectangulo.center),
+        )
+
+    def _obtener_rectangulo_hitos(self, limites_pantalla):
+        ancho = min(680, limites_pantalla.width - 30)
+        alto = min(520, limites_pantalla.height - 30)
+
+        return pygame.Rect(
+            limites_pantalla.centerx - ancho // 2,
+            limites_pantalla.centery - alto // 2,
+            ancho,
+            alto,
+        )
+
+
+    def _dibujar_ventana_hitos_rover(self, pantalla):
+        # Oscurecer el escenario detrás de la ventana.
+        oscurecimiento = pygame.Surface(
+            pantalla.get_size(),
+            pygame.SRCALPHA,
+        )
+        oscurecimiento.fill((0, 0, 0, 180))
+        pantalla.blit(oscurecimiento, (0, 0))
+
+        rect_ventana = self._obtener_rectangulo_hitos(
+            pantalla.get_rect()
+        )
+
+        # Fondo y borde de la ventana.
+        pygame.draw.rect(
+            pantalla,
+            (25, 32, 40),
+            rect_ventana,
+        )
+        pygame.draw.rect(
+            pantalla,
+            (150, 175, 190),
+            rect_ventana,
+            2,
+        )
+
+        # Título.
+        titulo = self.fuente.render(
+            "Hitos de exploración del Rover",
+            True,
+            (255, 255, 255),
+        )
+
+        pantalla.blit(
+            titulo,
+            titulo.get_rect(
+                midtop=(rect_ventana.centerx, rect_ventana.top + 14)
+            ),
+        )
+
+        # Botón para cerrar.
+        rect_cerrar = pygame.Rect(
+            rect_ventana.right - 35,
+            rect_ventana.top + 10,
+            25,
+            25,
+        )
+
+        pygame.draw.rect(
+            pantalla,
+            (130, 45, 45),
+            rect_cerrar,
+        )
+
+        texto_cerrar = self.fuente_monitor.render(
+            "X",
+            True,
+            (255, 255, 255),
+        )
+
+        pantalla.blit(
+            texto_cerrar,
+            texto_cerrar.get_rect(center=rect_cerrar.center),
+        )
+
+        # Créditos obtenidos en esta interacción.
+        if self.creditos_hitos_mensaje > 0:
+            texto_creditos = self.fuente_monitor.render(
+                f"¡Recompensas obtenidas: "
+                f"+{self.creditos_hitos_mensaje} créditos!",
+                True,
+                (120, 230, 140),
+            )
+        else:
+            texto_creditos = self.fuente_monitor.render(
+                "Consulta tu progreso y completa nuevos hitos.",
+                True,
+                (210, 210, 210),
+            )
+
+        pantalla.blit(
+            texto_creditos,
+            texto_creditos.get_rect(
+                midtop=(rect_ventana.centerx, rect_ventana.top + 52)
+            ),
+        )
+
+        # Agrupar los hitos por tipo de muestra.
+        categorias = (
+            ("Muestras de tierra", "muestras_tierra"),
+            ("Muestras de atmósfera", "muestras_atmosfera"),
+            ("Minerales recogidos", "minerales_recogidos"),
+        )
+
+        x_texto = rect_ventana.left + 24
+        y = rect_ventana.top + 85
+
+        ancho_barra = rect_ventana.width - 110
+        alto_barra = 7
+
+        for nombre_categoria, atributo in categorias:
+            # Encabezado de categoría.
+            encabezado = self.fuente_monitor.render(
+                nombre_categoria,
+                True,
+                (100, 200, 240),
+            )
+            pantalla.blit(encabezado, (x_texto, y))
+            y += 23
+
+            cantidad_actual = getattr(
+                self.game_state,
+                atributo,
+            )
+
+            hitos_categoria = [
+                hito
+                for hito in HITOS_ROVER
+                if hito["atributo"] == atributo
+            ]
+
+            for hito in hitos_categoria:
+                cantidad_requerida = hito["cantidad"]
+                completado = (
+                    hito["id"]
+                    in self.game_state.hitos_rover_reclamados
+                )
+
+                # Casilla del hito.
+                rect_check = pygame.Rect(
+                    x_texto,
+                    y + 2,
+                    16,
+                    16,
+                )
+
+                color_check = (
+                    (45, 165, 80)
+                    if completado
+                    else (75, 85, 95)
+                )
+
+                pygame.draw.rect(
+                    pantalla,
+                    color_check,
+                    rect_check,
+                )
+                pygame.draw.rect(
+                    pantalla,
+                    (220, 230, 235),
+                    rect_check,
+                    1,
+                )
+
+                # Dibujar una marca de verificación.
+                if completado:
+                    pygame.draw.line(
+                        pantalla,
+                        (255, 255, 255),
+                        (rect_check.left + 3, rect_check.centery),
+                        (rect_check.left + 7, rect_check.bottom - 4),
+                        2,
+                    )
+                    pygame.draw.line(
+                        pantalla,
+                        (255, 255, 255),
+                        (rect_check.left + 7, rect_check.bottom - 4),
+                        (rect_check.right - 2, rect_check.top + 3),
+                        2,
+                    )
+
+                # Información del hito.
+                texto_hito = (
+                    f"{cantidad_actual} / {cantidad_requerida} muestras"
+                    f"    |    Recompensa: {hito['creditos']} créditos"
+                )
+
+                color_texto = (
+                    (130, 230, 145)
+                    if completado
+                    else (230, 230, 230)
+                )
+
+                superficie_texto = self.fuente_monitor.render(
+                    texto_hito,
+                    True,
+                    color_texto,
+                )
+
+                pantalla.blit(
+                    superficie_texto,
+                    (x_texto + 26, y),
+                )
+
+                # Barra de progreso.
+                x_barra = rect_ventana.right - 65
+                y_barra = y + 6
+
+                rect_barra = pygame.Rect(
+                    x_barra,
+                    y_barra,
+                    38,
+                    alto_barra,
+                )
+
+                pygame.draw.rect(
+                    pantalla,
+                    (65, 75, 85),
+                    rect_barra,
+                )
+
+                progreso = min(
+                    1.0,
+                    cantidad_actual / cantidad_requerida,
+                )
+
+                if progreso > 0:
+                    pygame.draw.rect(
+                        pantalla,
+                        (45, 190, 95),
+                        (
+                            rect_barra.left,
+                            rect_barra.top,
+                            round(rect_barra.width * progreso),
+                            rect_barra.height,
+                        ),
+                    )
+
+                y += 28
+
+            y += 5
+
+        # Instrucción para cerrar la ventana.
+        pie = self.fuente_monitor.render(
+            "Pulsa E o ESC para cerrar",
+            True,
+            (190, 200, 210),
+        )
+
+        pantalla.blit(
+            pie,
+            pie.get_rect(
+                midbottom=(
+                    rect_ventana.centerx,
+                    rect_ventana.bottom - 10,
+                )
+            ),
         )
