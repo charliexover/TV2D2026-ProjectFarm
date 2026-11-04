@@ -176,7 +176,7 @@ class SceneManager:
         self.cambiar_a_granja()
 
     def procesar_desmayo(self):
-        self.game_state.creditos //= 2
+        self.game_state.creditos -= self.game_state.creditos // 10
         return self.avanzar_dia_y_guardar()
 
     def completar_desmayo(self, mensaje_guardado):
@@ -187,7 +187,7 @@ class SceneManager:
         self.casa.primera_entrada = True
         self.casa.primera_visita = False
         self.casa.mensaje_desmayo = (
-            "Por desmayarte, la agencia te descontó el 50% "
+            "Por desmayarte, la agencia te descontó el 10% "
             "de los créditos que poseías."
         )
         self.casa.mensaje_desmayo_hasta = pygame.time.get_ticks() + 8000

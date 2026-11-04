@@ -559,7 +559,7 @@ class HomeScene:
             )
 
         instruccion = self.fuente_menu_pc.render(
-            "E o Esc: cerrar / volver", True, (190, 190, 190)
+            "Esc: cerrar / volver", True, (190, 190, 190)
         )
         pantalla.blit(
             instruccion,
@@ -904,7 +904,7 @@ class HomeScene:
             and pygame.time.get_ticks() < self.mensaje_desmayo_hasta
         ):
             lineas_mensaje = (
-                "Por desmayarte, la agencia te descontó el 50%",
+                "Por desmayarte, la agencia te descontó el 10%",
                 "de los créditos que poseías.",
             )
             superficies = [

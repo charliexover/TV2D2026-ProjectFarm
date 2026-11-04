@@ -145,19 +145,7 @@ class Minijuego2:
         for indice, rectangulo in enumerate(rectangulos):
             color = (45, 205, 95) if self.luces[indice] else (70, 75, 82)
             pygame.draw.rect(pantalla, color, rectangulo)
-            pygame.draw.rect(pantalla, (220, 225, 225), rectangulo, 2)
-            etiqueta = self.fuente.render(
-                str(indice + 1), True, (255, 255, 255)
-            )
-            pantalla.blit(etiqueta, etiqueta.get_rect(center=rectangulo.center))
 
-        instruccion = self.fuente.render(
-            "Cada luz cambia su estado y el de sus vecinas.", True, (235, 235, 235)
-        )
-        pantalla.blit(
-            instruccion,
-            instruccion.get_rect(midtop=(tarjeta.centerx, tarjeta.top + 215)),
-        )
         ayuda = pygame.font.Font(None, 22).render(
             "Clic para cambiar luces | Esc: salir", True, (190, 195, 200)
         )
