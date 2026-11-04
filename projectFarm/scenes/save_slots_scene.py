@@ -1,10 +1,19 @@
+import os
+
 import pygame
 
 from projectFarm.save_slots import SaveSlots
 
 MAX_CARACTERES_NOMBRE = 8
+ESCALA_MASCOTA = 7
 
 class SaveSlotsScene:
+    POSICIONES_GUARDADOS = (
+        (0.20, 0.60),
+        (0.45, 0.35),
+        (0.75, 0.43),
+    )
+
     def __init__(self, save_slots, al_seleccionar, al_volver):
         self.save_slots = save_slots
         self.al_seleccionar = al_seleccionar
@@ -13,9 +22,37 @@ class SaveSlotsScene:
         self.fuente_titulo = pygame.font.Font(None, 48)
         self.fuente = pygame.font.Font(None, 32)
         self.fuente_detalle = pygame.font.Font(None, 24)
+        ruta_assets = os.path.join(
+            os.path.dirname(__file__), "..", "assets"
+        )
+        self.fondo = pygame.image.load(
+            os.path.normpath(os.path.join(ruta_assets, "saveScene.png"))
+        ).convert()
+        self.sprite_guardado = pygame.image.load(
+            os.path.normpath(os.path.join(ruta_assets, "starOFF.png"))
+        ).convert_alpha()
+        self.sprite_guardado_hover = pygame.image.load(
+            os.path.normpath(os.path.join(ruta_assets, "starON.png"))
+        ).convert_alpha()
+        self.sprite_perro = pygame.transform.scale(
+            pygame.image.load(
+                os.path.normpath(
+                    os.path.join(ruta_assets, "dogSpriteChoice.png")
+                )
+            ).convert_alpha(),
+            (15 * ESCALA_MASCOTA, 15 * ESCALA_MASCOTA),
+        )
+        self.sprite_gato = pygame.transform.scale(
+            pygame.image.load(
+                os.path.normpath(
+                    os.path.join(ruta_assets, "catSpriteChoice.png")
+                )
+            ).convert_alpha(),
+            (17 * ESCALA_MASCOTA, 15 * ESCALA_MASCOTA),
+        )
 
         self.mensaje = None
-        self.boton_volver = pygame.Rect(20, 20, 130, 42)
+        self.boton_volver = pygame.Rect(20, 0, 130, 42)
 
         # Creación del personaje y su mascota
         self.paso_creacion = 0
@@ -29,22 +66,38 @@ class SaveSlotsScene:
         self.boton_gato = pygame.Rect(0, 0, 150, 50)
 
     def obtener_rectangulos(self, limites_pantalla):
-        ancho = min(560, limites_pantalla.width - 40)
-        alto = 82
-        separacion = 14
-        inicio_y = (
-            limites_pantalla.height - (3 * alto + 2 * separacion)
-        ) // 2
-
+        ancho = max(48, round(limites_pantalla.width * 0.1))
+        alto = max(48, round(limites_pantalla.height * 0.1))
         return [
             pygame.Rect(
-                (limites_pantalla.width - ancho) // 2,
-                inicio_y + slot * (alto + separacion),
+                round(limites_pantalla.width * posicion_x) - ancho // 2,
+                round(limites_pantalla.height * posicion_y) - alto // 2,
                 ancho,
                 alto,
             )
-            for slot in range(SaveSlots.CANTIDAD_PARTIDAS)
+            for posicion_x, posicion_y in self.POSICIONES_GUARDADOS[
+                :SaveSlots.CANTIDAD_PARTIDAS
+            ]
         ]
+
+    @staticmethod
+    def _detalle_partida(resumen):
+        if resumen["estado"] == "vacia":
+            return "Espacio vacio - iniciar guardado nuevo"
+        if resumen["estado"] == "guardada":
+            return (
+                f"Continuar - Dia {resumen['dia']} | "
+                f"Creditos: {resumen['creditos']}"
+            )
+        return "Archivo de guardado no disponible"
+
+    @staticmethod
+    def _nombre_guardado(resumen, indice):
+        if resumen["estado"] == "guardada":
+            nombre_jugador = resumen.get("nombre_jugador")
+            if isinstance(nombre_jugador, str) and nombre_jugador.strip():
+                return nombre_jugador.strip()
+        return f"Guardado {indice}"
 
     def seleccionar(self, slot):
         try:
@@ -87,15 +140,11 @@ class SaveSlotsScene:
     def elegir_mascota(self, tipo):
         self.tipo_mascota = tipo
         self.paso_creacion = 3
-        self.nombre_mascota = ""
+        self.nombre_mascota = "Mars"
         self.mensaje = None
 
     def confirmar_creacion(self):
         nombre = self.nombre_mascota.strip()[:MAX_CARACTERES_NOMBRE]
-
-        if not nombre:
-            self.mensaje = "Escribe el nombre de tu mascota."
-            return
 
         try:
             self.al_seleccionar(
@@ -204,15 +253,18 @@ class SaveSlotsScene:
         )
 
     def draw(self, pantalla):
-        pantalla.fill((54, 48, 43))
         limites = pantalla.get_rect()
-
+        fondo = pygame.transform.scale(self.fondo, limites.size)
+        pantalla.blit(fondo, limites)
+        self.boton_volver = pygame.Rect(
+            20, limites.bottom - 62, 130, 42
+        )
         self.dibujar_boton(
             pantalla, self.boton_volver, "Volver"
         )
 
         titulo = self.fuente_titulo.render(
-            "Selecciona una partida",
+            "Selecciona un guardado",
             True,
             (255, 255, 255),
         )
@@ -222,51 +274,76 @@ class SaveSlotsScene:
         )
 
         resumenes = self.save_slots.resumenes()
-
+        rectangulos_guardados = self.obtener_rectangulos(limites)
+        posicion_mouse = pygame.mouse.get_pos()
+        indice_hover = None
         for indice, (rectangulo, resumen) in enumerate(
-            zip(self.obtener_rectangulos(limites), resumenes),
+            zip(rectangulos_guardados, resumenes),
             start=1,
         ):
-            pygame.draw.rect(pantalla, (35, 35, 35), rectangulo)
-            pygame.draw.rect(
-                pantalla, (220, 220, 220), rectangulo, 2
+            esta_encima = rectangulo.collidepoint(posicion_mouse)
+            if esta_encima:
+                indice_hover = indice - 1
+            sprite = (
+                self.sprite_guardado_hover
+                if esta_encima
+                else self.sprite_guardado
             )
-
+            tamano_sprite = (
+                max(48, round(limites.height * 0.1)),
+                max(48, round(limites.height * 0.1)),
+            )
+            sprite = pygame.transform.scale(sprite, tamano_sprite)
+            pantalla.blit(
+                sprite, sprite.get_rect(center=rectangulo.center)
+            )
             titulo_slot = self.fuente.render(
-                f"Partida {indice}", True, (255, 255, 255)
+                self._nombre_guardado(resumen, indice),
+                True,
+                (255, 255, 255),
             )
             pantalla.blit(
                 titulo_slot,
-                (rectangulo.left + 16, rectangulo.top + 10),
+                titulo_slot.get_rect(
+                    midtop=(rectangulo.centerx, rectangulo.bottom + 8)
+                ),
             )
 
-            if resumen["estado"] == "vacia":
-                detalle = "Espacio vacio - iniciar partida nueva"
-            elif resumen["estado"] == "guardada":
-                detalle = (
-                    f"Continuar - Dia {resumen['dia']} | "
-                    f"Creditos: {resumen['creditos']}"
-                )
-            else:
-                detalle = "Archivo de guardado no disponible"
-
-            superficie = self.fuente_detalle.render(
-                detalle, True, (220, 220, 220)
+        if indice_hover is not None:
+            resumen = resumenes[indice_hover]
+            titulo = self.fuente.render(
+                self._nombre_guardado(resumen, indice_hover + 1),
+                True,
+                (255, 255, 255),
+            )
+            detalle = self.fuente_detalle.render(
+                self._detalle_partida(resumen), True, (220, 220, 220)
+            )
+            panel = pygame.Rect(
+                0, 0, min(520, limites.width - 32), 66
+            )
+            panel.center = (limites.centerx, limites.height - 132)
+            fondo_panel = pygame.Surface(panel.size, pygame.SRCALPHA)
+            fondo_panel.fill((0, 0, 0, 190))
+            pantalla.blit(fondo_panel, panel)
+            pantalla.blit(
+                titulo,
+                titulo.get_rect(midtop=(panel.centerx, panel.top + 7)),
             )
             pantalla.blit(
-                superficie,
-                (rectangulo.left + 16, rectangulo.top + 48),
+                detalle,
+                detalle.get_rect(midbottom=(panel.centerx, panel.bottom - 6)),
             )
 
         indicacion = self.fuente_detalle.render(
-            "Haz clic en un espacio o pulsa 1, 2 o 3.",
+            "Haz clic en un guardado o pulsa 1, 2 o 3.",
             True,
             (230, 230, 230),
         )
         pantalla.blit(
             indicacion,
             indicacion.get_rect(
-                midbottom=(limites.centerx, limites.bottom - 24)
+                midbottom=(limites.centerx, limites.bottom - 14)
             ),
         )
 
@@ -288,7 +365,8 @@ class SaveSlotsScene:
             superposicion.fill((0, 0, 0, 190))
             pantalla.blit(superposicion, (0, 0))
 
-            panel = pygame.Rect(0, 0, 500, 270)
+            alto_panel = 330 if self.paso_creacion == 2 else 270
+            panel = pygame.Rect(0, 0, 500, alto_panel)
             panel.center = limites.center
             pygame.draw.rect(pantalla, (54, 48, 43), panel)
             pygame.draw.rect(
@@ -297,18 +375,13 @@ class SaveSlotsScene:
 
             if self.paso_creacion == 1:
                 titulo_texto = "Nombre del jugador"
-                indicacion_texto = "Escribe tu nombre y pulsa Enter"
                 valor = self.nombre_jugador
 
             elif self.paso_creacion == 2:
                 titulo_texto = "Elige tu mascota"
-                indicacion_texto = "Selecciona perro o gato"
 
             else:
                 titulo_texto = "Nombre de tu mascota"
-                indicacion_texto = (
-                    f"Tu mascota sera un {self.tipo_mascota}"
-                )
                 valor = self.nombre_mascota
 
             superficie_titulo = self.fuente_titulo.render(
@@ -318,17 +391,7 @@ class SaveSlotsScene:
                 superficie_titulo,
                 superficie_titulo.get_rect(
                     midtop=(panel.centerx, panel.top + 20)
-                ),
-            )
-
-            superficie_indicacion = self.fuente_detalle.render(
-                indicacion_texto, True, (230, 230, 230)
-            )
-            pantalla.blit(
-                superficie_indicacion,
-                superficie_indicacion.get_rect(
-                    center=(panel.centerx, panel.top + 90)
-                ),
+                )
             )
 
             if self.paso_creacion in (1, 3):
@@ -385,26 +448,48 @@ class SaveSlotsScene:
 
             elif self.paso_creacion == 2:
                 self.boton_perro = pygame.Rect(
-                    panel.centerx - 165,
-                    panel.top + 125,
+                    panel.centerx - 195,
+                    panel.top + 115,
+                    170,
                     150,
-                    50,
                 )
                 self.boton_gato = pygame.Rect(
-                    panel.centerx + 15,
-                    panel.top + 125,
+                    panel.centerx + 25,
+                    panel.top + 115,
+                    170,
                     150,
-                    50,
                 )
+                posicion_mouse = pygame.mouse.get_pos()
+                for rectangulo, sprite, etiqueta in (
+                    (self.boton_perro, self.sprite_perro, "Perro"),
+                    (self.boton_gato, self.sprite_gato, "Gato"),
+                ):
+                    color = (
+                        (100, 92, 75)
+                        if rectangulo.collidepoint(posicion_mouse)
+                        else (35, 35, 35)
+                    )
+                    pygame.draw.rect(pantalla, color, rectangulo)
+                    pygame.draw.rect(
+                        pantalla, (220, 220, 220), rectangulo, 2
+                    )
+                    pantalla.blit(
+                        sprite,
+                        sprite.get_rect(
+                            center=(rectangulo.centerx, rectangulo.top + 58)
+                        ),
+                    )
+                    texto_mascota = self.fuente.render(
+                        etiqueta, True, (255, 255, 255)
+                    )
+                    pantalla.blit(
+                        texto_mascota,
+                        texto_mascota.get_rect(
+                            center=(rectangulo.centerx, rectangulo.bottom - 20)
+                        ),
+                    )
 
-                self.dibujar_boton(
-                    pantalla, self.boton_perro, "1 - Perro"
-                )
-                self.dibujar_boton(
-                    pantalla, self.boton_gato, "2 - Gato"
-                )
-
-                ayuda = "Tambien puedes pulsar D o G"
+                ayuda = "Haz clic en una imagen o pulsa 1/2"
                 superficie_ayuda = self.fuente_detalle.render(
                     ayuda, True, (200, 200, 200)
                 )

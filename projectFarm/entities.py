@@ -1,4 +1,5 @@
 from pathlib import Path
+import math
 
 import pygame
 
@@ -10,6 +11,7 @@ class Jugador:
     DURACION_PARPADEO = 140
     INTERVALO_PASO = 180
     TAMANO_SPRITE = (42, 48)
+    MULTIPLICADOR_CAMINAR = 0.5
 
     def __init__(self, x=100, y=100):
         self.rectangulo = pygame.Rect(x, y, 50, 50)
@@ -41,19 +43,39 @@ class Jugador:
         self.parpadeo_hasta = None
         self.moviendose = False
         self.paso_walk = 0
+        self.acumulador_movimiento_x = 0.0
+        self.acumulador_movimiento_y = 0.0
+        self.corriendo = False
+        self.shift_presionado = False
 
-    def actualizar(self, teclas):
-        desplazamiento_x = 0
-        desplazamiento_y = 0
+    def actualizar(self, teclas, multiplicador_velocidad=1.0):
+        shift_actual = teclas[pygame.K_LSHIFT] or teclas[pygame.K_RSHIFT]
+        if shift_actual and not self.shift_presionado:
+            self.corriendo = not self.corriendo
+        self.shift_presionado = shift_actual
+
+        desplazamiento_x = 0.0
+        desplazamiento_y = 0.0
+        velocidad = (
+            self.velocidad
+            if self.corriendo
+            else self.velocidad * self.MULTIPLICADOR_CAMINAR
+        )
         if teclas[pygame.K_a]:
-            desplazamiento_x -= self.velocidad
+            desplazamiento_x -= velocidad * multiplicador_velocidad
         if teclas[pygame.K_d]:
-            desplazamiento_x += self.velocidad
+            desplazamiento_x += velocidad * multiplicador_velocidad
         if teclas[pygame.K_w]:
-            desplazamiento_y -= self.velocidad
+            desplazamiento_y -= velocidad * multiplicador_velocidad
         if teclas[pygame.K_s]:
-            desplazamiento_y += self.velocidad
+            desplazamiento_y += velocidad * multiplicador_velocidad
 
+        self.acumulador_movimiento_x += desplazamiento_x
+        self.acumulador_movimiento_y += desplazamiento_y
+        desplazamiento_x = int(self.acumulador_movimiento_x)
+        desplazamiento_y = int(self.acumulador_movimiento_y)
+        self.acumulador_movimiento_x -= desplazamiento_x
+        self.acumulador_movimiento_y -= desplazamiento_y
         self.rectangulo.move_ip(desplazamiento_x, desplazamiento_y)
         if desplazamiento_x:
             self.mirando_izquierda = desplazamiento_x < 0
@@ -85,12 +107,18 @@ class Jugador:
                 if self.sprite == self.sprites["Blink"]:
                     self.sprite = self.sprites["Idle"]
 
-    def dibujar(self, pantalla, desplazamiento=(0, 0)):
+    def dibujar(self, pantalla, desplazamiento=(0, 0), viento=False):
         sprite = self.sprite
         if self.mirando_izquierda:
             sprite = self.sprites_izquierda[id(self.sprite)]
         posicion = sprite.get_rect(center=self.rectangulo.center)
         posicion.move_ip(desplazamiento)
+        if viento:
+            ahora = pygame.time.get_ticks()
+            posicion.move_ip(
+                round(math.sin(ahora / 75) * 2),
+                round(math.cos(ahora / 110)),
+            )
         pantalla.blit(sprite, posicion)
 
 

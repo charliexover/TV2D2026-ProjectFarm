@@ -14,7 +14,7 @@ class Chatarra:
         if zona.width < cls.TAMANO or zona.height < cls.TAMANO:
             raise ValueError("La zona de chatarra debe caber al menos un cuadrado")
 
-        cantidad = random.randint(2, 5)
+        cantidad = random.randint(5, 10)
         chatarra = []
         for _ in range(cantidad):
             for _ in range(1000):

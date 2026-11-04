@@ -3,13 +3,18 @@ import os
 
 import pygame
 
+from engine.audio import reproducir_sonido_pc
 from engine.ui import Inventario
 from projectFarm.scenes.dataCenter_scene import DataCenterScene
+from projectFarm.scenes.caveScene import CaveScene
 from projectFarm.scenes.expedition_scene import ExpeditionScene
+from projectFarm.scenes.ending import EndingScene
 from projectFarm.scenes.game_scene import GameScene
 from projectFarm.scenes.home_scene import HomeScene
+from projectFarm.scenes.options import OptionsMenu
 from projectFarm.scenes.recycle_scene import RecycleScene
 from projectFarm.scenes.save_slots_scene import SaveSlotsScene
+from projectFarm.scenes.skilltree_scene import SkillTreeMenu
 from projectFarm.scenes.title_scene import TitleScene
 from projectFarm.game_state import GameState
 from projectFarm.farm import CULTIVOS
@@ -23,8 +28,18 @@ class SceneManager:
         self.escenas = {}
         self.escena_actual = None
         self.musica_exterior_cargada = False
+        self.tipo_musica_actual = None
         self.ruta_musica_exterior = os.path.join(
-            os.path.dirname(__file__), "..", "assets", "MarsSong.wav"
+            os.path.dirname(__file__), "..", "sounds", "OneDayInMars.wav"
+        )
+        self.ruta_musica_tormenta = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "sounds",
+            "OneTormentDayInMars.wav",
+        )
+        self.ruta_musica_titulo = os.path.join(
+            os.path.dirname(__file__), "..", "sounds", "MarsAndMeIntro.wav"
         )
         self.game_state = GameState()
         self.inventario = Inventario()
@@ -39,6 +54,13 @@ class SceneManager:
             self.cambiar_a_expedicion,
             self.procesar_desmayo,
             self.completar_desmayo,
+            self.cambiar_a_cueva,
+            al_ending=self.cambiar_a_ending,
+        )
+        self.cueva = CaveScene(
+            self.game_state,
+            self.inventario,
+            self.salir_de_cueva,
         )
         self.casa = HomeScene(
             self.game_state,
@@ -58,6 +80,9 @@ class SceneManager:
         self.expedicion = ExpeditionScene(
             self.game_state, self.inventario, self.cambiar_a_granja
         )
+        self.menu_habilidades_edificios = SkillTreeMenu()
+        self.menu_opciones = OptionsMenu()
+        self.solicitar_cierre = False
         self.registrar_escena("granja", self.granja, inicial=False)
         self.registrar_escena("casa", self.casa, inicial=False)
         self.registrar_escena("titulo", self.titulo, inicial=True)
@@ -65,6 +90,8 @@ class SceneManager:
         self.registrar_escena("reciclaje", self.reciclaje, inicial=False)
         self.registrar_escena("dataCenter", self.dataCenter, inicial=False)
         self.registrar_escena("expedicion", self.expedicion, inicial=False)
+        self.registrar_escena("cueva", self.cueva, inicial=False)
+        self._actualizar_musica(self.escena_actual)
 
     def registrar_escena(self, nombre, escena, inicial=False):
         if nombre in self.escenas:
@@ -83,18 +110,37 @@ class SceneManager:
         if escena is self.escena_actual:
             return
 
+        if self.escena_actual is self.granja:
+            self.granja.restablecer_cursor()
+
         self.escena_actual = escena
-        if escena is self.granja:
-            if not self.musica_exterior_cargada:
-                pygame.mixer.music.load(
-                    os.path.normpath(self.ruta_musica_exterior)
-                )
-                pygame.mixer.music.play(-1)
-                self.musica_exterior_cargada = True
+        self._actualizar_musica(escena)
+
+    def _actualizar_musica(self, escena):
+        if escena is self.titulo:
+            tipo_musica = "titulo"
+            ruta_musica = self.ruta_musica_titulo
+        elif escena is self.granja:
+            if self.game_state.tormenta_arena:
+                tipo_musica = "tormenta"
+                ruta_musica = self.ruta_musica_tormenta
             else:
-                pygame.mixer.music.unpause()
-        elif self.musica_exterior_cargada:
-            pygame.mixer.music.pause()
+                tipo_musica = "exterior"
+                ruta_musica = self.ruta_musica_exterior
+        else:
+            if self.tipo_musica_actual is not None:
+                pygame.mixer.music.pause()
+            return
+
+        if self.tipo_musica_actual == tipo_musica:
+            pygame.mixer.music.unpause()
+            return
+
+        pygame.mixer.music.load(os.path.normpath(ruta_musica))
+        pygame.mixer.music.play(-1)
+        self.tipo_musica_actual = tipo_musica
+        if tipo_musica == "exterior":
+            self.musica_exterior_cargada = True
 
     def cambiar_a_granja(self):
         self.cambiar_escena("granja")
@@ -110,6 +156,24 @@ class SceneManager:
 
     def cambiar_a_expedicion(self):
         self.cambiar_escena("expedicion")
+
+    def cambiar_a_cueva(self):
+        self.cueva.primera_entrada = True
+        self.cambiar_escena("cueva")
+
+    def cambiar_a_ending(self):
+        self.ending = EndingScene(
+            self.game_state,
+            al_volver_titulo=self.cambiar_a_titulo,
+        )
+        self.registrar_escena("ending", self.ending)
+        self.cambiar_escena("ending")
+
+    def salir_de_cueva(self):
+        self.granja.primera_entrada = True
+        self.granja.puerta_reentrada = "cueva"
+        self.granja.ultimo_update_oxigeno = None
+        self.cambiar_a_granja()
 
     def procesar_desmayo(self):
         self.game_state.creditos //= 2
@@ -225,18 +289,38 @@ class SceneManager:
             "dia_uso_tanque_este",
             "correos_recibidos",
             "correos_leidos",
+            "correos_programados",
             "nombre_jugador",
             "tipo_mascota",
             "nombre_mascota",
             "tormenta_arena",
             "oxigeno_maximo",
+            "creditos_acumulados",
             "oxigenoMaximo1Comprado",
             "oxigenoMaximo2Comprado",
             "oxigenoMaximo3Comprado",
             "progreso_centro_datos",
             "centro_datos_completado",
+            "powers_reparados",
+            "powers_pagados",
+            "estrella_centro_datos",
+            "estrella_expediciones",
+            "estrella_generador",
+            "estrella_creditos",
+            "dia_interaccion_pared",
+            "cuevaAbierta",
+            "mateRecolectado",
+            "dia_recoleccion_mate",
+            "bono_mate_creditos_otorgado",
+            "martilloDisponible",
+            "martilloComprado",
+            "linternaComprada",
             "descargaDatos1Comprado",
             "descargaDatos2Comprado",
+            "mejorRegaderaComprada",
+            "mejorExpedicionComprada",
+            "radarComprado",
+            "trajeAntiTormentaComprado",
         }
         valores_opcionales_por_defecto = {
             "parcela1Comprada": True,
@@ -262,18 +346,38 @@ class SceneManager:
             "resultado_ultima_expedicion": "",
             "correos_recibidos": [],
             "correos_leidos": [],
+            "correos_programados": {},
             "nombre_jugador": None,
             "tipo_mascota": None,
             "nombre_mascota": None,
             "tormenta_arena": False,
             "oxigeno_maximo": 100,
+            "creditos_acumulados": estado_guardado.get("creditos", 0),
             "oxigenoMaximo1Comprado": False,
             "oxigenoMaximo2Comprado": False,
             "oxigenoMaximo3Comprado": False,
             "progreso_centro_datos": 0,
             "centro_datos_completado": False,
+            "powers_reparados": [False] * 6,
+            "powers_pagados": [False] * 6,
+            "estrella_centro_datos": False,
+            "estrella_expediciones": False,
+            "estrella_generador": False,
+            "estrella_creditos": False,
+            "dia_interaccion_pared": None,
+            "cuevaAbierta": False,
+            "mateRecolectado": False,
+            "dia_recoleccion_mate": None,
+            "bono_mate_creditos_otorgado": False,
+            "martilloDisponible": False,
+            "martilloComprado": False,
+            "linternaComprada": False,
             "descargaDatos1Comprado": False,
             "descargaDatos2Comprado": False,
+            "mejorRegaderaComprada": False,
+            "mejorExpedicionComprada": False,
+            "radarComprado": False,
+            "trajeAntiTormentaComprado": False,
         }
         # Campos antiguos que ya no se utilizan desde que se eliminaron
         # los tanques de oxígeno del mapa.
@@ -328,6 +432,8 @@ class SceneManager:
                         "dia_inicio_procesamiento",
                         "dia_mision_antena",
                         "dia_finalizacion_expedicion",
+                        "dia_interaccion_pared",
+                        "dia_recoleccion_mate",
                     )
                     else (str, type(None))
                 )
@@ -335,6 +441,33 @@ class SceneManager:
                     raise ValueError(f"El valor guardado de {nombre} no es valido.")
             elif type(valor) is not type(valor_inicial):
                 raise ValueError(f"El valor guardado de {nombre} no es valido.")
+        for nombre in (
+            "semilla_zanahoria",
+            "semilla_papa",
+            "semilla_tomate",
+            "semilla_repollo",
+        ):
+            estado_guardado[nombre] = min(
+                estado_guardado[nombre], self.inventario.LIMITE_SEMILLAS
+            )
+        if len(estado_guardado["powers_reparados"]) != 6 or any(
+            type(reparado) is not bool
+            for reparado in estado_guardado["powers_reparados"]
+        ):
+            raise ValueError("El estado guardado de los Power no es valido.")
+        if len(estado_guardado["powers_pagados"]) != 6 or any(
+            type(pagado) is not bool
+            for pagado in estado_guardado["powers_pagados"]
+        ):
+            raise ValueError("El estado de pagos de los Power no es valido.")
+        if any(
+            reparado and pagado
+            for reparado, pagado in zip(
+                estado_guardado["powers_reparados"],
+                estado_guardado["powers_pagados"],
+            )
+        ):
+            raise ValueError("Un Power reparado no puede tener un pago pendiente.")
         if estado_guardado["expedicion_activa"] not in (
             None,
             *self.expedicion.EXPEDICIONES,
@@ -441,7 +574,9 @@ class SceneManager:
 
     def avanzar_dia_y_guardar(self):
         self.granja.avanzar_dia()
-        if self.game_state.dia_actual >= 7:
+        if self.game_state.dia_actual == 7:
+            self.game_state.tormenta_arena = True
+        elif self.game_state.dia_actual > 7:
             self.game_state.tormenta_arena = random.random() < 0.35
         else:
             self.game_state.tormenta_arena = False
@@ -477,8 +612,176 @@ class SceneManager:
             return f"Dia avanzado, pero no se pudo guardar: {error}"
         return f"Partida {self.partida_activa + 1} guardada."
 
+    def _seleccionar_slot_por_clic(self, eventos, limites_pantalla):
+        if (
+            self.escena_actual not in (
+                self.casa,
+                self.reciclaje,
+                self.dataCenter,
+                self.expedicion,
+                self.cueva,
+            )
+        ):
+            return False
+
+        for evento in eventos:
+            if (
+                evento.type == pygame.MOUSEBUTTONDOWN
+                and evento.button == 1
+                and self.inventario.seleccionar_slot(
+                    evento.pos,
+                    limites_pantalla.width,
+                    limites_pantalla.height,
+                )
+            ):
+                return True
+        return False
+
     def update(self, teclas, limites_pantalla, eventos=()):
+        escenas_jugables = (
+            self.granja,
+            self.casa,
+            self.reciclaje,
+            self.dataCenter,
+            self.expedicion,
+            self.cueva,
+        )
+        if self.escena_actual in escenas_jugables:
+            if (
+                self.escena_actual is self.granja
+                and self.granja.minijuego_power.activo
+            ):
+                self.granja.update(teclas, limites_pantalla, eventos)
+                return
+
+            if (
+                self.escena_actual is self.granja
+                and self.granja.power_pendiente_confirmacion is not None
+            ):
+                self.granja.update(teclas, limites_pantalla, eventos)
+                return
+
+            if (
+                self.escena_actual is self.granja
+                and self.granja.ventana_generador_abierta
+            ):
+                self.granja.update(teclas, limites_pantalla, eventos)
+                return
+
+            if self.menu_opciones.abierto:
+                self.menu_opciones.procesar_eventos(
+                    eventos, limites_pantalla
+                )
+                self.solicitar_cierre = (
+                    self.menu_opciones.solicitar_cierre
+                )
+                if not self.menu_opciones.abierto:
+                    self.granja.pausado = False
+                    self.granja.ultimo_update_oxigeno = (
+                        pygame.time.get_ticks()
+                    )
+                return
+            if self.escena_actual is self.casa and self.casa.menu_pc is not None:
+                self.casa.update(teclas, limites_pantalla, eventos)
+                return
+            if any(
+                evento.type == pygame.KEYDOWN
+                and evento.key == pygame.K_ESCAPE
+                for evento in eventos
+            ):
+                self.menu_opciones.abierto = True
+                self.menu_opciones.pagina = "principal"
+                self.menu_opciones.seleccion = 0
+                self.granja.pausado = True
+                return
+
+        escenas_interiores = (
+            self.casa,
+            self.reciclaje,
+            self.dataCenter,
+            self.expedicion,
+            self.cueva,
+        )
+        if (
+            self.escena_actual in escenas_interiores
+            and self.escena_actual.interfaz_estado.mostrar_inventario
+        ):
+            if self._seleccionar_slot_por_clic(
+                eventos, limites_pantalla
+            ):
+                return
+            for evento in eventos:
+                if (
+                    evento.type == pygame.KEYDOWN
+                    and pygame.K_1 <= evento.key <= pygame.K_9
+                ):
+                    self.inventario.slot_seleccionado = (
+                        evento.key - pygame.K_1
+                    )
+                    return
+            if any(
+                evento.type == pygame.KEYDOWN
+                and evento.key == pygame.K_i
+                for evento in eventos
+            ):
+                self.escena_actual.interfaz_estado.mostrar_inventario = False
+            return
+
+        if self.escena_actual in escenas_interiores and self.menu_habilidades_edificios.procesar_eventos(
+            eventos, limites_pantalla, self.game_state
+        ):
+            return
+
+        if self._seleccionar_slot_por_clic(eventos, limites_pantalla):
+            return
+
+        if self.escena_actual in escenas_interiores:
+            for evento in eventos:
+                if (
+                    evento.type == pygame.KEYDOWN
+                    and pygame.K_1 <= evento.key <= pygame.K_9
+                ):
+                    self.inventario.slot_seleccionado = (
+                        evento.key - pygame.K_1
+                    )
+                    return
+
+        if self.escena_actual in escenas_interiores and any(
+            evento.type == pygame.KEYDOWN
+            and evento.key == pygame.K_i
+            for evento in eventos
+        ):
+            self.escena_actual.interfaz_estado.mostrar_inventario = True
+            reproducir_sonido_pc()
+            return
+
         self.escena_actual.update(teclas, limites_pantalla, eventos)
 
     def draw(self, pantalla):
         self.escena_actual.draw(pantalla)
+        escenas_interiores = (
+            self.casa,
+            self.reciclaje,
+            self.dataCenter,
+            self.expedicion,
+            self.cueva,
+        )
+        if (
+            self.escena_actual in escenas_interiores
+            and self.escena_actual is not self.casa
+        ):
+            self.inventario.dibujar(pantalla, self.game_state)
+        if (
+            self.escena_actual in escenas_interiores
+            and self.escena_actual.interfaz_estado.mostrar_inventario
+        ):
+            self.escena_actual.interfaz_estado.dibujar_inventario(
+                pantalla, self.game_state
+            )
+        if self.escena_actual in escenas_interiores:
+            self.menu_habilidades_edificios.dibujar(
+                pantalla, self.game_state
+            )
+        self.menu_opciones.dibujar(
+            pantalla, self.game_state.nombre_mascota
+        )

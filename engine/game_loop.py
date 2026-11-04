@@ -20,6 +20,9 @@ class GameLoop:
 
             teclas = pygame.key.get_pressed()
             self.escena.update(teclas, self.pantalla.get_rect(), eventos)
+            if getattr(self.escena, "solicitar_cierre", False):
+                ejecutando = False
+                continue
             self.escena.draw(self.pantalla)
 
             pygame.display.flip()

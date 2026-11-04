@@ -1,20 +1,29 @@
 import os
 import random
+import math
 import xml.etree.ElementTree as ET
 
 import pygame
 from pytmx import TiledTileLayer
 from pytmx.util_pygame import load_pygame
 
-from engine.audio import reproducir_sonido_interaccion
+from engine.audio import (
+	registrar_sonido_efecto,
+	reproducir_sonido_interaccion,
+	reproducir_sonido_pc,
+)
 from engine.harvest_effect import EfectoCosecha
 from engine.minigame1 import Minijuego1
+from engine.minigame2 import Minijuego2
+from engine.power_effect import EfectoPower
+from engine.radar import Radar
 from engine.scroll import Camera
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado, Inventario
 from engine.water_splash import SistemaSplashAgua
 from ..entities import Jugador
 from ..farm import CULTIVOS, Parcela
+from ..recompensasExpe import hitos_rover_completados
 from ..scraps import Chatarra
 from .skilltree_scene import SkillTreeMenu
 from engine.particle_system import SistemaParticulas
@@ -22,10 +31,17 @@ from engine.particle_system import SistemaParticulas
 
 class GameScene:
 	SEGUNDOS_POR_PUNTO_OXIGENO = 2
+	MULTIPLICADOR_OXIGENO_ZONA_SEGURA_TORMENTA = 5
+	MULTIPLICADOR_VELOCIDAD_TORMENTA = 0.8
+	FUERZA_VIENTO_TORMENTA = 0.5
+	COSTO_REPARACION_POWER = 50
+	ENERGIA_INICIAL_GENERADOR = 10
+	ENERGIA_POR_POWER = 15
 	DESPLAZAMIENTO_ENTRADA_DATOS_X = 12
 	DURACION_ANIMACION_SUENO = 1800
 	DURACION_FUNDIDO_SUENO = 800
 	DURACION_CARTEL_DIA_SUENO = 2100
+	DURACION_FUNDIDO_ENDING = 1200
 	INTERVALO_FRAME_SUENO = 250
 
 	def __init__(
@@ -38,15 +54,64 @@ class GameScene:
 		al_entrar_expedicion,
 		al_desmayarse=None,
 		al_completar_desmayo=None,
+		al_entrar_cueva=None,
+		al_ending=None,
 	):
 		self.game_state = game_state
 		self.inventario = inventario
+		sprite_cursor_guante = pygame.transform.scale(
+			self.inventario.sprite_mano, (24, 24)
+		)
+		sprite_cursor_guante_reforzado = pygame.transform.scale(
+			self.inventario.sprite_mano_reforzada, (24, 24)
+		)
+		self.cursor_guante = pygame.cursors.Cursor(
+			(2, 2), sprite_cursor_guante
+		)
+		self.cursor_guante_reforzado = pygame.cursors.Cursor(
+			(2, 2), sprite_cursor_guante_reforzado
+		)
+		sprite_cursor_regadera = pygame.transform.scale(
+			self.inventario.sprite_regadera, (24, 24)
+		)
+		sprite_cursor_regadera_mejorada = pygame.transform.scale(
+			self.inventario.sprite_regadera_mejorada, (24, 24)
+		)
+		self.cursor_regadera = pygame.cursors.Cursor(
+			(2, 2), sprite_cursor_regadera
+		)
+		self.cursor_regadera_mejorada = pygame.cursors.Cursor(
+			(2, 2), sprite_cursor_regadera_mejorada
+		)
+		self.cursores_semillas = {
+			f"semilla_{cultivo}": pygame.cursors.Cursor(
+				(2, 2),
+				pygame.transform.scale(
+					self.inventario.sprites_semillas[cultivo],
+					(24, 24),
+				),
+			)
+			for cultivo in Inventario.SLOTS_SEMILLAS.values()
+		}
+		self.cursor_guante_activo = False
+		self.tipo_cursor_guante = None
 		self.interfaz_estado = InterfazEstado()
 		self.jugador = Jugador()
+		self.radar = Radar()
+		self.radar_visible = game_state.radarComprado
+		self.acumulador_viento_x = 0.0
+		self.pausado = False
 		self.primera_entrada = True
 		self.puerta_reentrada = "casa"
 		self.fondo = self._cargar_fondo()
+		self.efectos_power = {
+			nombre: EfectoPower(x, y)
+			for nombre, (x, y) in self.energia_mapa.items()
+			if nombre != "Generador"
+		}
 		self.menu_habilidades = SkillTreeMenu()
+		self.ventana_generador_abierta = False
+		self.power_pendiente_confirmacion = None
 		self.camera = Camera()
 		self.origen_mapa = (0, 0)
 		self.particulas = None
@@ -60,6 +125,8 @@ class GameScene:
 		self.al_entrar_expedicion = al_entrar_expedicion
 		self.al_desmayarse = al_desmayarse
 		self.al_completar_desmayo = al_completar_desmayo
+		self.al_entrar_cueva = al_entrar_cueva
+		self.al_ending = al_ending
 		ruta_sueno = os.path.join(
 			os.path.dirname(__file__), "..", "utils", "AstroSleeping.json"
 		)
@@ -69,13 +136,14 @@ class GameScene:
 			for sprite in spritesheet_sueno.get_animation_frames("default")
 		]
 		ruta_musica_sueno = os.path.join(
-			os.path.dirname(__file__), "..", "assets", "SleepSong.wav"
+			os.path.dirname(__file__), "..", "sounds", "SleepSong.wav"
 		)
 		self.musica_sueno = pygame.mixer.Sound(
 			os.path.normpath(ruta_musica_sueno)
 		)
 		self.canal_musica_sueno = None
 		self.transicion_desmayo_inicio = None
+		self.transicion_ending_inicio = None
 		self.dia_avanzado_durante_desmayo = False
 		self.mensaje_resultado_desmayo = None
 		self._generar_chatarra()
@@ -110,9 +178,6 @@ class GameScene:
 			for parcelas in self.parcelas_por_nodo.values()
 			for parcela in parcelas
 		]
-		ruta_sprite_parcela = os.path.join(
-			os.path.dirname(__file__), "..", "assets", "parcelaSprite.png"
-		)
 		
 		self.posiciones_parcelas_mapa = [
 			parcela.rectangulo.topleft for parcela in self.parcelas
@@ -125,18 +190,82 @@ class GameScene:
 		self.mensaje_antena = None
 		self.mensaje_antena_hasta = 0
 		self.minijuego_antena = Minijuego1()
+		self.minijuego_power = Minijuego2()
+		self.power_en_minijuego = None
 		self.ultimo_update_oxigeno = None
 		self.segundos_acumulados_oxigeno = 0
 		ruta_efecto = os.path.join(
-			os.path.dirname(__file__), "..", "assets", "SoundEffect1.wav"
+			os.path.dirname(__file__), "..", "sounds", "SoundEffect1.wav"
 		)
-		self.efecto_accion = pygame.mixer.Sound(os.path.normpath(ruta_efecto))
+		self.efecto_accion = registrar_sonido_efecto(
+			pygame.mixer.Sound(os.path.normpath(ruta_efecto))
+		)
+		self.sonido_cosechar = registrar_sonido_efecto(
+			pygame.mixer.Sound(
+				os.path.normpath(
+					os.path.join(
+						os.path.dirname(__file__), "..", "sounds", "cosechar.wav"
+					)
+				)
+			)
+		)
+		self.sonido_tomar_chatarra = registrar_sonido_efecto(
+			pygame.mixer.Sound(
+				os.path.normpath(
+					os.path.join(
+						os.path.dirname(__file__),
+						"..",
+						"sounds",
+						"tomarChatarra.wav",
+					)
+				)
+			)
+		)
+		self.sonido_mate = registrar_sonido_efecto(
+			pygame.mixer.Sound(
+				os.path.normpath(
+					os.path.join(
+						os.path.dirname(__file__),
+						"..",
+						"sounds",
+						"ruidoMate.wav",
+					)
+				)
+			)
+		)
+		self.sonidos_riego = []
+		for nombre_sonido in ("regando1.wav", "regando2.wav"):
+			ruta_sonido_riego = os.path.join(
+				os.path.dirname(__file__), "..", "sounds", nombre_sonido
+			)
+			self.sonidos_riego.append(
+				registrar_sonido_efecto(
+					pygame.mixer.Sound(os.path.normpath(ruta_sonido_riego))
+				)
+			)
+		self.sonidos_plantar = []
+		for nombre_sonido in ("plantar1.wav", "plantar2.wav"):
+			ruta_sonido_plantar = os.path.join(
+				os.path.dirname(__file__), "..", "sounds", nombre_sonido
+			)
+			self.sonidos_plantar.append(
+				registrar_sonido_efecto(
+					pygame.mixer.Sound(os.path.normpath(ruta_sonido_plantar))
+				)
+			)
 		ruta_chatarra = os.path.join(
 			os.path.dirname(__file__), "..", "assets", "chatarraSprite.png"
 		)
 		sprite_chatarra = pygame.image.load(ruta_chatarra).convert_alpha()
 		self.sprite_chatarra = pygame.transform.scale(
 			sprite_chatarra, (Chatarra.TAMANO, Chatarra.TAMANO)
+		)
+		ruta_entrada_cueva = os.path.join(
+			os.path.dirname(__file__), "..", "assets", "caveEntrance.png"
+		)
+		self.sprite_entrada_cueva = pygame.transform.scale(
+			pygame.image.load(ruta_entrada_cueva).convert_alpha(),
+			(48, 48),
 		)
 		
 		ruta_cosechas = os.path.join(
@@ -209,6 +338,59 @@ class GameScene:
 		self.antenas_mapa = {
 			objeto.name: (round(objeto.x * 3), round(objeto.y * 3))
 			for objeto in capa_antenas
+		}
+		capa_cueva = mapa.get_layer_by_name("Cueva")
+		objeto_entrada_cueva = next(
+			(
+				objeto
+				for objeto in capa_cueva
+				if objeto.name == "Entrada"
+			),
+			None,
+		)
+		if objeto_entrada_cueva is None:
+			raise ValueError(
+				"Falta el objeto 'Entrada' en la capa 'Cueva'."
+			)
+		self.entrada_cueva_mapa = (
+			round(objeto_entrada_cueva.x * 3),
+			round(objeto_entrada_cueva.y * 3),
+		)
+		capa_salida = mapa.get_layer_by_name("Salida")
+		objeto_ending = next(
+			(
+				objeto
+				for objeto in capa_salida
+				if objeto.name == "Ending"
+			),
+			None,
+		)
+		if objeto_ending is None:
+			raise ValueError(
+				"Falta el objeto 'Ending' en la capa 'Salida'."
+			)
+		self.zona_ending_mapa = pygame.Rect(
+			round(objeto_ending.x * 3),
+			round(objeto_ending.y * 3),
+			round(objeto_ending.width * 3),
+			round(objeto_ending.height * 3),
+		)
+		capa_energia = mapa.get_layer_by_name("Energia")
+		objetos_energia = {
+			objeto.name: objeto for objeto in capa_energia
+		}
+		nombres_powers = tuple(f"Power{indice}" for indice in range(1, 7))
+		nombres_energia = ("Generador", *nombres_powers)
+		if any(nombre not in objetos_energia for nombre in nombres_energia):
+			raise ValueError(
+				"La capa 'Energia' debe contener 'Generador' y 'Power1' a 'Power6'."
+			)
+		self.energia_mapa = {
+			nombre: (
+				round(objetos_energia[nombre].x * 3),
+				round(objetos_energia[nombre].y * 3),
+			)
+			for nombre in nombres_energia
 		}
 		capa_parcelas = mapa.get_layer_by_name("Parcelas")
 		objetos_parcelas = {
@@ -475,6 +657,37 @@ class GameScene:
 			self.game_state.reciclajeDisponible = True
 		if self.game_state.expedicionesComprado:
 			self.game_state.expedicionesDisponible = True
+		if self.game_state.centro_datos_completado:
+			self.game_state.estrella_centro_datos = True
+		if hitos_rover_completados(self.game_state):
+			self.game_state.estrella_expediciones = True
+		if self._obtener_progreso_energia() == 100:
+			self.game_state.estrella_generador = True
+		if self.game_state.creditos_acumulados >= 100_000:
+			self.game_state.estrella_creditos = True
+		if (
+			self.game_state.mateRecolectado
+			and not self.game_state.bono_mate_creditos_otorgado
+			and self.game_state.dia_recoleccion_mate is not None
+			and self.game_state.dia_actual
+			> self.game_state.dia_recoleccion_mate
+		):
+			creditos_faltantes = max(
+				0, 100_000 - self.game_state.creditos_acumulados
+			)
+			bono_creditos = (creditos_faltantes + 1) // 2
+			self.game_state.creditos_acumulados += bono_creditos
+			self.game_state.bono_mate_creditos_otorgado = True
+			if bono_creditos:
+				self._mostrar_mensaje_antena(
+					f"El mate te ayudó a conseguir {bono_creditos} créditos."
+				)
+		if (
+			self.game_state.dia_interaccion_pared is not None
+			and self.game_state.dia_actual
+			> self.game_state.dia_interaccion_pared
+		):
+			self.game_state.martilloDisponible = True
 		self.game_state.oxigeno = self.game_state.oxigeno_maximo
 		self.segundos_acumulados_oxigeno = 0
 		self.ultimo_update_oxigeno = None
@@ -549,7 +762,17 @@ class GameScene:
 			jugador_mapa.center
 		)
 
-		multiplicador_oxigeno = 1 if dentro_zona_segura else 10
+		if dentro_zona_segura:
+			multiplicador_oxigeno = (
+				self.MULTIPLICADOR_OXIGENO_ZONA_SEGURA_TORMENTA
+				if (
+					self.game_state.tormenta_arena
+					and not self.game_state.trajeAntiTormentaComprado
+				)
+				else 1
+			)
+		else:
+			multiplicador_oxigeno = 10
 
 		self.segundos_acumulados_oxigeno += (
 			delta_segundos * multiplicador_oxigeno
@@ -566,6 +789,12 @@ class GameScene:
 			self.segundos_acumulados_oxigeno %= (
 				self.SEGUNDOS_POR_PUNTO_OXIGENO
 			)
+
+	def _zona_segura_protege_jugador(self, jugador_mapa):
+		return self.zona_segura_oxigeno.collidepoint(jugador_mapa.center) and (
+			not self.game_state.tormenta_arena
+			or self.game_state.trajeAntiTormentaComprado
+		)
 
 	def _generar_chatarra(self):
 		self.chatarra = Chatarra.generar_en(self.zona_chatarra_mapa)
@@ -604,9 +833,55 @@ class GameScene:
 		return any(rectangulo_mapa.colliderect(colision) for colision in colisiones)
 
 	def update(self, teclas, limites_pantalla, eventos=()):
-		
+		for nombre, efecto in self.efectos_power.items():
+			indice_power = int(nombre.removeprefix("Power")) - 1
+			efecto.actualizar(
+				activo=not self.game_state.powers_reparados[indice_power]
+			)
+
+		for evento in eventos:
+			if (
+				self.game_state.radarComprado
+				and evento.type == pygame.KEYDOWN
+				and evento.key == pygame.K_r
+			):
+				self.radar_visible = not self.radar_visible
+
 		if self.transicion_desmayo_inicio is not None:
 			self._actualizar_desmayo()
+			return
+
+		if self.transicion_ending_inicio is not None:
+			transcurrido = (
+				pygame.time.get_ticks() - self.transicion_ending_inicio
+			)
+			if transcurrido >= self.DURACION_FUNDIDO_ENDING:
+				self.al_ending()
+			return
+
+		if self.power_pendiente_confirmacion is not None:
+			for evento in eventos:
+				if evento.type != pygame.KEYDOWN:
+					continue
+				if evento.key == pygame.K_ESCAPE:
+					self.power_pendiente_confirmacion = None
+					return
+				if evento.key != pygame.K_e:
+					continue
+
+				indice_power = self.power_pendiente_confirmacion
+				self.power_pendiente_confirmacion = None
+				if self.game_state.materiales < self.COSTO_REPARACION_POWER:
+					self._mostrar_mensaje_antena(
+						f"Necesitas {self.COSTO_REPARACION_POWER} materiales "
+						"para reparar este Power."
+					)
+					return
+				self.game_state.materiales -= self.COSTO_REPARACION_POWER
+				self.game_state.powers_pagados[indice_power] = True
+				self.power_en_minijuego = indice_power
+				self.minijuego_power.iniciar()
+				return
 			return
 
 		if self.minijuego_antena.activo:
@@ -618,6 +893,39 @@ class GameScene:
 				)
 			return
 
+		if self.minijuego_power.activo:
+			indice_power = self.power_en_minijuego
+			if self.minijuego_power.actualizar(eventos, limites_pantalla):
+				if indice_power is None:
+					raise RuntimeError(
+						"El minijuego termino sin un Power asignado."
+					)
+				self.game_state.powers_reparados[indice_power] = True
+				self.game_state.powers_pagados[indice_power] = False
+				nombre = f"Power{indice_power + 1}"
+				self.efectos_power[nombre].apagar()
+				progreso = self._obtener_progreso_energia()
+				self._mostrar_mensaje_antena(
+					f"{nombre} reparado. Energía del generador: "
+					f"{progreso}%."
+				)
+				self.power_en_minijuego = None
+			elif not self.minijuego_power.activo:
+				self.power_en_minijuego = None
+				self._mostrar_mensaje_antena(
+					"Pago conservado. Interactúa con el Power para reintentar."
+				)
+			return
+
+		if self.ventana_generador_abierta:
+			if any(
+				evento.type == pygame.KEYDOWN
+				and evento.key == pygame.K_ESCAPE
+				for evento in eventos
+			):
+				self.ventana_generador_abierta = False
+			return
+
 		if self.menu_habilidades.procesar_eventos(
 			eventos, limites_pantalla, self.game_state
 		):
@@ -627,6 +935,22 @@ class GameScene:
 					if evento.type == pygame.KEYDOWN and evento.key == pygame.K_i:
 						self.interfaz_estado.mostrar_inventario = (
 							not self.interfaz_estado.mostrar_inventario
+						)
+						if self.interfaz_estado.mostrar_inventario:
+							reproducir_sonido_pc()
+					elif (
+						evento.type == pygame.KEYDOWN
+						and evento.key == pygame.K_e
+						and self.inventario.slot_seleccionado
+						== Inventario.SLOT_MATE
+					):
+						self.sonido_mate.play()
+					elif (
+						evento.type == pygame.KEYDOWN
+						and pygame.K_1 <= evento.key <= pygame.K_9
+					):
+						self.inventario.slot_seleccionado = (
+							evento.key - pygame.K_1
 						)
 
 		if self.interfaz_estado.mostrar_inventario:
@@ -679,20 +1003,42 @@ class GameScene:
 					else (
 						puerta_expedicion
 						if self.puerta_reentrada == "expedicion"
-						else puerta_casa
+						else (
+							(
+								self.origen_mapa[0]
+								+ self.entrada_cueva_mapa[0],
+								self.origen_mapa[1]
+								+ self.entrada_cueva_mapa[1],
+							)
+							if self.puerta_reentrada == "cueva"
+							else puerta_casa
+						)
 					)
 				)
 			)
-			self.jugador.rectangulo.midtop = (
-				punto_entrada[0],
-				punto_entrada[1] + 8,
-			)
+			if self.puerta_reentrada == "cueva":
+				self.jugador.rectangulo.center = (
+					punto_entrada[0],
+					punto_entrada[1] + 80,
+				)
+			else:
+				self.jugador.rectangulo.midtop = (
+					punto_entrada[0],
+					punto_entrada[1] + 8,
+				)
 			self.primera_entrada = False
 		self.camera.update(
 			self.jugador.rectangulo, limites_pantalla, limites_mapa
 		)
 		rect_previo = self.jugador.rectangulo.copy()
-		self.jugador.actualizar(teclas)
+		hay_tormenta = self.game_state.tormenta_arena
+		multiplicador_velocidad = (
+			self.MULTIPLICADOR_VELOCIDAD_TORMENTA
+			if hay_tormenta
+			else 1.0
+		)
+		self.jugador.actualizar(teclas, multiplicador_velocidad)
+		self._aplicar_viento()
 		self.jugador.rectangulo.clamp_ip(limites_mapa)
 		rect_destino = self.jugador.rectangulo.copy()
 
@@ -744,6 +1090,16 @@ class GameScene:
 		self.particulas.actualizar_camara(self.camera.offset)
 		self.splash_riego.actualizar()
 		self.efecto_cosecha.actualizar()
+
+		if (
+			self.al_ending is not None
+			and self._tiene_todas_las_estrellas()
+			and self.camera.to_map(
+				self.jugador.rectangulo
+			).colliderect(self.zona_ending_mapa)
+		):
+			self.transicion_ending_inicio = pygame.time.get_ticks()
+			return
 			
 		if self.jugador.rectangulo.collidepoint(puerta_casa):
 			self.primera_entrada = True
@@ -781,6 +1137,10 @@ class GameScene:
 
 		self.parcela_seleccionada = self.obtener_parcela_jugador(self.jugador)
 		
+		if self._interactuar_con_energia(eventos):
+			return
+		if self._interactuar_con_cueva(eventos):
+			return
 		self._interactuar_con_antenas(eventos)
 		self._interactuar_con_lugares_construccion(eventos)
 
@@ -815,7 +1175,7 @@ class GameScene:
 				self.game_state.chatarra += random.randint(1, 4)
 				self.chatarra.pop(indice_chatarra)
 				self.posiciones_chatarra_mapa.pop(indice_chatarra)
-				self.efecto_accion.play()
+				self.sonido_tomar_chatarra.play()
 				continue
 			parcela_clickeada = self.obtener_parcela_jugador(
 				self.jugador, posicion_mundo
@@ -847,7 +1207,7 @@ class GameScene:
 							parcela_clickeada.rectangulo.centerx,
 							parcela_clickeada.rectangulo.centery,
 						)
-						self.efecto_accion.play()
+						self.sonido_cosechar.play()
 
 			elif self.inventario.slot_seleccionado in Inventario.SLOTS_SEMILLAS:
 				tipo_cultivo = Inventario.SLOTS_SEMILLAS[
@@ -865,10 +1225,12 @@ class GameScene:
 						semilla,
 						getattr(self.game_state, semilla) - 1,
 					)
-					self.efecto_accion.play()
+					random.choice(self.sonidos_plantar).play()
 
 			elif self.inventario.slot_seleccionado == Inventario.SLOT_REGADERA:
-				if (
+				if self.game_state.mejorRegaderaComprada:
+					self._regar_parcelas_cercanas(parcela_clickeada)
+				elif (
 					parcela_clickeada.planta is not None
 					and parcela_clickeada.dia_regado != self.game_state.dia_actual
 				):
@@ -877,12 +1239,115 @@ class GameScene:
 						parcela_clickeada.rectangulo.centerx,
 						parcela_clickeada.rectangulo.centery + 5,
 					)
+					random.choice(self.sonidos_riego).play()
 
+	def _regar_parcelas_cercanas(self, parcela_central):
+		tamano = Parcela.TAMANO
+		zona_riego = pygame.Rect(
+			parcela_central.rectangulo.x - tamano,
+			parcela_central.rectangulo.y - tamano,
+			tamano * 3,
+			tamano * 3,
+		)
+		se_rego_parcela = False
+		for parcela in self.parcelas_por_nodo["Parcela1"]:
+			if (
+				not zona_riego.colliderect(parcela.rectangulo)
+				or parcela.planta is None
+				or parcela.dia_regado == self.game_state.dia_actual
+			):
+				continue
+			parcela.regar(self.game_state.dia_actual)
+			self.splash_riego.crear_splash(
+				parcela.rectangulo.centerx,
+				parcela.rectangulo.centery + 5,
+			)
+			se_rego_parcela = True
+		if se_rego_parcela:
+			random.choice(self.sonidos_riego).play()
+
+	def _aplicar_viento(self):
+		if not self.game_state.tormenta_arena:
+			self.acumulador_viento_x = 0.0
+			return
+
+		intensidad_viento = self.FUERZA_VIENTO_TORMENTA * (
+			1 + 0.2 * math.sin(pygame.time.get_ticks() / 700)
+		)
+		self.acumulador_viento_x -= intensidad_viento
+		desplazamiento_x = int(self.acumulador_viento_x)
+		self.acumulador_viento_x -= desplazamiento_x
+		self.jugador.rectangulo.move_ip(desplazamiento_x, 0)
 
 
 	def _mostrar_mensaje_antena(self, texto):
 		self.mensaje_antena = texto
 		self.mensaje_antena_hasta = pygame.time.get_ticks() + 3000
+
+	def _interactuar_con_cueva(self, eventos):
+		x, y = self.entrada_cueva_mapa
+		zona_interaccion = pygame.Rect(x - 32, y - 32, 64, 64)
+		jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
+		presiono_interactuar = any(
+			evento.type == pygame.KEYDOWN and evento.key == pygame.K_e
+			for evento in eventos
+		)
+		if self.game_state.cuevaAbierta:
+			if not jugador_mapa.colliderect(zona_interaccion):
+				return False
+			self.ultimo_update_oxigeno = None
+			if self.al_entrar_cueva is None:
+				raise RuntimeError(
+					"No se configuró la transición a la escena de la cueva."
+				)
+			self.al_entrar_cueva()
+			return True
+
+		if not jugador_mapa.colliderect(zona_interaccion):
+			return False
+
+		clic_entrada = False
+		for evento in eventos:
+			if (
+				evento.type != pygame.MOUSEBUTTONDOWN
+				or evento.button != 1
+			):
+				continue
+			posicion_mundo = self.camera.to_world(evento.pos)
+			posicion_mapa = (
+				posicion_mundo[0] - self.origen_mapa[0],
+				posicion_mundo[1] - self.origen_mapa[1],
+			)
+			if zona_interaccion.collidepoint(posicion_mapa):
+				clic_entrada = True
+				break
+
+		if presiono_interactuar or clic_entrada:
+			if self.game_state.dia_interaccion_pared is None:
+				self.game_state.dia_interaccion_pared = (
+					self.game_state.dia_actual
+				)
+		if presiono_interactuar:
+			self._mostrar_mensaje_antena(
+				"Esta parte del muro no parece muy solido"
+			)
+			return True
+		if not clic_entrada:
+			return False
+		if (
+			not self.game_state.martilloComprado
+			or self.inventario.slot_seleccionado
+			!= Inventario.SLOT_MARTILLO
+		):
+			self._mostrar_mensaje_antena(
+				"Necesitas tener el martillo equipado para romper el muro."
+			)
+			return True
+
+		self.game_state.cuevaAbierta = True
+		self.sonido_cosechar.play()
+		self._mostrar_mensaje_antena("Rompiste el muro.")
+		return True
 
 	def _interactuar_con_antenas(self, eventos):
 		if self.game_state.centro_datos_completado:
@@ -896,7 +1361,7 @@ class GameScene:
 				if not jugador_mapa.colliderect(zona_interaccion):
 					continue
 
-				reproducir_sonido_interaccion()
+				reproducir_sonido_pc()
 				mision_activa = (
 					self.game_state.dia_mision_antena
 					== self.game_state.dia_actual
@@ -917,6 +1382,56 @@ class GameScene:
 						f"Antena {nombre}."
 					)
 				break
+
+	def _obtener_progreso_energia(self):
+		powers_reparados = sum(self.game_state.powers_reparados)
+		return min(
+			100,
+			self.ENERGIA_INICIAL_GENERADOR
+			+ powers_reparados * self.ENERGIA_POR_POWER,
+		)
+
+	def _interactuar_con_energia(self, eventos):
+		if not any(
+			evento.type == pygame.KEYDOWN and evento.key == pygame.K_e
+			for evento in eventos
+		):
+			return False
+
+		jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
+		for nombre, (x, y) in self.energia_mapa.items():
+			zona_interaccion = pygame.Rect(x - 32, y - 32, 64, 64)
+			if not jugador_mapa.colliderect(zona_interaccion):
+				continue
+
+			reproducir_sonido_pc()
+			if nombre == "Generador":
+				self.ventana_generador_abierta = True
+				return True
+
+			indice_power = int(nombre.removeprefix("Power")) - 1
+			if self.game_state.powers_reparados[indice_power]:
+				self._mostrar_mensaje_antena(f"{nombre} ya está reparado.")
+				return True
+
+			if (
+				not self.game_state.powers_pagados[indice_power]
+				and self.game_state.materiales < self.COSTO_REPARACION_POWER
+			):
+				self._mostrar_mensaje_antena(
+					f"Necesitas {self.COSTO_REPARACION_POWER} materiales "
+					"para reparar este Power."
+				)
+				return True
+
+			if not self.game_state.powers_pagados[indice_power]:
+				self.power_pendiente_confirmacion = indice_power
+				return True
+			self.power_en_minijuego = indice_power
+			self.minijuego_power.iniciar()
+			return True
+
+		return False
 
 	def _interactuar_con_lugares_construccion(self, eventos):
 		if not any(
@@ -957,8 +1472,100 @@ class GameScene:
 			lineas.append(linea)
 		return lineas
 
+	def restablecer_cursor(self):
+		if self.cursor_guante_activo:
+			pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+			self.cursor_guante_activo = False
+			self.tipo_cursor_guante = None
+
+	def _actualizar_cursor_guante(self):
+		posicion_mundo = self.camera.to_world(pygame.mouse.get_pos())
+		sobre_parcela = (
+			self.game_state.parcela1Disponible
+			and any(
+				parcela.rectangulo.collidepoint(posicion_mundo)
+				for parcela in self.parcelas_por_nodo["Parcela1"]
+			)
+		)
+		sobre_chatarra_cercana = (
+			any(
+				pieza.rectangulo.collidepoint(posicion_mundo)
+				and self.jugador.rectangulo.inflate(
+					Chatarra.TAMANO, Chatarra.TAMANO
+				).colliderect(pieza.rectangulo)
+				for pieza in self.chatarra
+			)
+		)
+		interfaz_bloquea_cursor = (
+			not self.pausado
+			and not self.menu_habilidades.abierto
+			and self.menu_habilidades.dialogo is None
+			and not self.ventana_generador_abierta
+			and self.power_pendiente_confirmacion is None
+			and self.transicion_desmayo_inicio is None
+			and self.transicion_ending_inicio is None
+		)
+		tipo_cursor = None
+		if interfaz_bloquea_cursor and sobre_parcela:
+			if self.inventario.slot_seleccionado == Inventario.SLOT_MANO:
+				tipo_cursor = (
+					"reforzado"
+					if self.game_state.guanteReforzado
+					else "normal"
+				)
+			elif (
+				self.inventario.slot_seleccionado
+				== Inventario.SLOT_REGADERA
+			):
+				tipo_cursor = (
+					"regadera_mejorada"
+					if self.game_state.mejorRegaderaComprada
+					else "regadera"
+				)
+			elif (
+				self.inventario.slot_seleccionado
+				in Inventario.SLOTS_SEMILLAS
+			):
+				tipo_cultivo = Inventario.SLOTS_SEMILLAS[
+					self.inventario.slot_seleccionado
+				]
+				tipo_cursor = f"semilla_{tipo_cultivo}"
+		if (
+			tipo_cursor is None
+			and interfaz_bloquea_cursor
+			and sobre_chatarra_cercana
+		):
+			if self.game_state.guanteReforzado:
+				tipo_cursor = "reforzado"
+			elif self.inventario.slot_seleccionado == Inventario.SLOT_MANO:
+				tipo_cursor = "normal"
+
+		if tipo_cursor != self.tipo_cursor_guante:
+			if tipo_cursor is None:
+				self.restablecer_cursor()
+				return
+			cursores = {
+				"normal": self.cursor_guante,
+				"reforzado": self.cursor_guante_reforzado,
+				"regadera": self.cursor_regadera,
+				"regadera_mejorada": self.cursor_regadera_mejorada,
+			}
+			if tipo_cursor in self.cursores_semillas:
+				cursor = self.cursores_semillas[tipo_cursor]
+			else:
+				cursor = cursores[tipo_cursor]
+			pygame.mouse.set_cursor(cursor)
+			self.cursor_guante_activo = True
+			self.tipo_cursor_guante = tipo_cursor
+
 	def draw(self, pantalla):
+		if self.minijuego_power.activo:
+			self.restablecer_cursor()
+			self.minijuego_power.dibujar(pantalla)
+			return
+
 		if self.minijuego_antena.activo:
+			self.restablecer_cursor()
 			self.minijuego_antena.dibujar(pantalla)
 			return
 
@@ -992,6 +1599,17 @@ class GameScene:
 							self.origen_mapa
 						)
 					),
+				)
+			if self.game_state.cuevaAbierta:
+				rect_entrada_cueva = self.sprite_entrada_cueva.get_rect(
+					center=(
+						self.origen_mapa[0] + self.entrada_cueva_mapa[0],
+						self.origen_mapa[1] + self.entrada_cueva_mapa[1],
+					)
+				)
+				pantalla.blit(
+					self.sprite_entrada_cueva,
+					self.camera.apply(rect_entrada_cueva),
 				)
 			for atributo_disponible, (_, rectangulo) in (
 				self.bloques_edificios.items()
@@ -1095,6 +1713,10 @@ class GameScene:
 				self.jugador.dibujar(
 					pantalla,
 					self.camera.screen_offset,
+					viento=(
+						self.game_state.tormenta_arena
+						and not self.pausado
+					),
 				)
 
 
@@ -1113,6 +1735,12 @@ class GameScene:
 				pantalla,
 				self.camera.screen_offset,
 			)
+		desplazamiento_efectos_power = (
+			self.origen_mapa[0] + self.camera.screen_offset[0],
+			self.origen_mapa[1] + self.camera.screen_offset[1],
+		)
+		for efecto in self.efectos_power.values():
+			efecto.dibujar(pantalla, desplazamiento_efectos_power)
 
 		if self.game_state.tormenta_arena:
 			capa_tormenta = pygame.Surface(
@@ -1158,11 +1786,7 @@ class GameScene:
 			self.jugador.rectangulo
 		)
 
-		dentro_zona_segura = (
-			self.zona_segura_oxigeno.collidepoint(
-				jugador_mapa.center
-			)
-		)
+		dentro_zona_segura = self._zona_segura_protege_jugador(jugador_mapa)
 
 		self.interfaz_estado.dibujar(
 			pantalla,
@@ -1172,6 +1796,43 @@ class GameScene:
 			dentro_zona_segura=dentro_zona_segura,
 		)
 		self.inventario.dibujar(pantalla, self.game_state)
+		edificios_radar = [
+			self.puerta_casa_mapa,
+		]
+		edificios_radar.extend(
+			rectangulo.midbottom
+			for atributo_disponible, (_, rectangulo)
+			in self.bloques_edificios.items()
+			if getattr(self.game_state, atributo_disponible)
+		)
+		chatarra_radar = (
+			self.camera.to_map(pieza.rectangulo).center
+			for pieza in self.chatarra
+		)
+		cultivos_radar = (
+			self.camera.to_map(parcela.rectangulo).center
+			for parcela in self.parcelas
+			if parcela.planta is not None
+			and parcela.obtener_etapa() != "cosechable"
+		)
+		cultivos_cosechables_radar = (
+			self.camera.to_map(parcela.rectangulo).center
+			for parcela in self.parcelas
+			if parcela.obtener_etapa() == "cosechable"
+		)
+		if self.game_state.radarComprado and self.radar_visible:
+			self.radar.dibujar(
+				pantalla,
+				self.fondo.get_size(),
+				self.camera.to_map(self.jugador.rectangulo).center,
+				edificios_radar,
+				chatarra_radar,
+				cultivos_radar,
+				cultivos_cosechables_radar,
+				antenas=self.antenas_mapa.values(),
+				generador=self.energia_mapa["Generador"],
+				interferencia=self.game_state.tormenta_arena,
+			)
 		jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
 		for atributo_disponible, (nombre, rectangulo) in (
 			self.bloques_edificios.items()
@@ -1208,6 +1869,52 @@ class GameScene:
 					indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
 				)
 				break
+		x, y = self.entrada_cueva_mapa
+		zona_cueva = pygame.Rect(x - 32, y - 32, 64, 64)
+		if jugador_mapa.colliderect(zona_cueva):
+			texto_cueva = (
+				"Entra en la cueva"
+				if self.game_state.cuevaAbierta
+				else "Clic con martillo o E: revisar el muro"
+			)
+			indicacion = self.fuente.render(
+				texto_cueva,
+				True,
+				(255, 255, 255),
+			)
+			pantalla.blit(
+				indicacion,
+				indicacion.get_rect(
+					midtop=(pantalla.get_width() // 2, 20)
+				),
+			)
+		for nombre, (x, y) in self.energia_mapa.items():
+			zona_interaccion = pygame.Rect(x - 32, y - 32, 64, 64)
+			if not jugador_mapa.colliderect(zona_interaccion):
+				continue
+			if nombre == "Generador":
+				texto_indicacion = "E: revisar generador"
+			else:
+				indice_power = int(nombre.removeprefix("Power")) - 1
+				if self.game_state.powers_reparados[indice_power]:
+					texto_indicacion = f"E: {nombre} ya reparado"
+				elif self.game_state.powers_pagados[indice_power]:
+					texto_indicacion = f"E: reintentar reparación de {nombre}"
+				else:
+					texto_indicacion = (
+						f"E: reparar {nombre} "
+						f"({self.COSTO_REPARACION_POWER} materiales)"
+					)
+			indicacion = self.fuente.render(
+				texto_indicacion, True, (255, 255, 255)
+			)
+			pantalla.blit(
+				indicacion,
+				indicacion.get_rect(
+					midtop=(pantalla.get_width() // 2, 20)
+				),
+			)
+			break
 		if (
 			self.mensaje_antena is not None
 			and pygame.time.get_ticks() < self.mensaje_antena_hasta
@@ -1234,7 +1941,127 @@ class GameScene:
 				)
 
 		self.menu_habilidades.dibujar(pantalla, self.game_state)
+		if self.ventana_generador_abierta:
+			self._dibujar_ventana_generador(pantalla)
+		if self.power_pendiente_confirmacion is not None:
+			self._dibujar_confirmacion_power(pantalla)
 		self._dibujar_transicion_desmayo(pantalla)
+		self._dibujar_transicion_ending(pantalla)
+		self._actualizar_cursor_guante()
+
+	def _tiene_todas_las_estrellas(self):
+		return all(
+			(
+				self.game_state.estrella_centro_datos,
+				self.game_state.estrella_expediciones,
+				self.game_state.estrella_generador,
+				self.game_state.reciclajeDisponible,
+				self.game_state.estrella_creditos,
+			)
+		)
+
+	def _dibujar_transicion_ending(self, pantalla):
+		if self.transicion_ending_inicio is None:
+			return
+		progreso = min(
+			1,
+			(pygame.time.get_ticks() - self.transicion_ending_inicio)
+			/ self.DURACION_FUNDIDO_ENDING,
+		)
+		fundido = pygame.Surface(pantalla.get_size(), pygame.SRCALPHA)
+		fundido.fill((0, 0, 0, round(255 * progreso)))
+		pantalla.blit(fundido, (0, 0))
+
+	def _dibujar_confirmacion_power(self, pantalla):
+		capa_sombra = pygame.Surface(pantalla.get_size(), pygame.SRCALPHA)
+		capa_sombra.fill((0, 0, 0, 170))
+		pantalla.blit(capa_sombra, (0, 0))
+
+		ancho = min(480, pantalla.get_width() - 40)
+		ventana = pygame.Rect(
+			(pantalla.get_width() - ancho) // 2,
+			(pantalla.get_height() - 160) // 2,
+			ancho,
+			160,
+		)
+		pygame.draw.rect(pantalla, (20, 25, 28), ventana)
+		pygame.draw.rect(pantalla, (220, 230, 225), ventana, 2)
+
+		indice_power = self.power_pendiente_confirmacion
+		if indice_power is None:
+			raise RuntimeError("No hay un Power pendiente de confirmación.")
+		texto = self.fuente.render(
+			f"¿Usar {self.COSTO_REPARACION_POWER} materiales para reparar "
+			f"Power{indice_power + 1}?",
+			True,
+			(255, 255, 255),
+		)
+		pantalla.blit(
+			texto,
+			texto.get_rect(center=(ventana.centerx, ventana.centery - 12)),
+		)
+		ayuda = pygame.font.Font(None, 22).render(
+			"E: confirmar | Esc: cancelar", True, (200, 200, 200)
+		)
+		pantalla.blit(
+			ayuda,
+			ayuda.get_rect(center=(ventana.centerx, ventana.centery + 34)),
+		)
+
+	def _dibujar_ventana_generador(self, pantalla):
+		ancho = min(480, pantalla.get_width() - 40)
+		ventana = pygame.Rect(
+			(pantalla.get_width() - ancho) // 2,
+			(pantalla.get_height() - 180) // 2,
+			ancho,
+			180,
+		)
+		pygame.draw.rect(pantalla, (20, 25, 28), ventana)
+		pygame.draw.rect(pantalla, (220, 230, 225), ventana, 2)
+
+		titulo = self.fuente.render("GENERADOR", True, (255, 255, 255))
+		pantalla.blit(
+			titulo,
+			titulo.get_rect(midtop=(ventana.centerx, ventana.top + 18)),
+		)
+
+		progreso = self._obtener_progreso_energia()
+		rect_barra = pygame.Rect(
+			ventana.left + 32,
+			ventana.top + 70,
+			ventana.width - 64,
+			28,
+		)
+		pygame.draw.rect(pantalla, (55, 65, 60), rect_barra)
+		if progreso:
+			pygame.draw.rect(
+				pantalla,
+				(45, 205, 90),
+				(
+					rect_barra.left,
+					rect_barra.top,
+					round(rect_barra.width * progreso / 100),
+					rect_barra.height,
+				),
+			)
+
+		estado = (
+			"Completado."
+			if progreso == 100
+			else f"Energía: {progreso}%"
+		)
+		texto_estado = self.fuente.render(estado, True, (255, 255, 255))
+		pantalla.blit(
+			texto_estado,
+			texto_estado.get_rect(midtop=(ventana.centerx, ventana.top + 108)),
+		)
+		ayuda = pygame.font.Font(None, 22).render(
+			"E o Esc: cerrar", True, (200, 200, 200)
+		)
+		pantalla.blit(
+			ayuda,
+			ayuda.get_rect(midbottom=(ventana.centerx, ventana.bottom - 8)),
+		)
 
 	def _dibujar_transicion_desmayo(self, pantalla):
 		inicio = self.transicion_desmayo_inicio

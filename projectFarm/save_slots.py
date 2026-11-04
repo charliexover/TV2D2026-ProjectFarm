@@ -77,6 +77,7 @@ class SaveSlots:
                     "estado": "guardada",
                     "dia": estado.get("dia_actual", 0),
                     "creditos": estado.get("creditos", 0),
+                    "nombre_jugador": estado.get("nombre_jugador"),
                 }
             )
         return resumenes

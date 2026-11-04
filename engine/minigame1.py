@@ -2,7 +2,7 @@ import random
 
 import pygame
 
-from engine.audio import reproducir_sonido_interaccion
+from engine.audio import reproducir_sonido_pc
 
 
 class Minijuego1:
@@ -61,7 +61,7 @@ class Minijuego1:
             if evento.type != pygame.KEYDOWN or evento.key != pygame.K_e:
                 continue
 
-            reproducir_sonido_interaccion()
+            reproducir_sonido_pc()
             if dentro_de_zona and self.puede_acertar:
                 self.aciertos += 1
                 self.puede_acertar = False

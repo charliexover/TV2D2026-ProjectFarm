@@ -17,9 +17,10 @@ class GameState:
         self.oxigenoMaximo1Comprado = False
         self.oxigenoMaximo2Comprado = False
         self.oxigenoMaximo3Comprado = False
-        self.creditos = 1000
+        self.creditos = 0
+        self.creditos_acumulados = self.creditos
         self.chatarra = 0
-        self.materiales = 1000
+        self.materiales = 0
         self.parcela1Comprada = True
         self.parcela1Disponible = True
         self.parcela2Comprada = False
@@ -30,6 +31,10 @@ class GameState:
         self.estado_procesamiento = "inactivo"
         self.dia_inicio_procesamiento = None
         self.guanteReforzado = False
+        self.mejorRegaderaComprada = False
+        self.mejorExpedicionComprada = False
+        self.radarComprado = False
+        self.trajeAntiTormentaComprado = False
         self.semillaPapaDesbloqueada = False
         self.semillaTomateDesbloqueada = False
         self.semillaRepolloDesbloqueada = False
@@ -52,9 +57,28 @@ class GameState:
         self.datos_antena_enviados = False
         self.progreso_centro_datos = 0
         self.centro_datos_completado = False
+        self.powers_reparados = [False] * 6
+        self.powers_pagados = [False] * 6
+        self.estrella_centro_datos = False
+        self.estrella_expediciones = False
+        self.estrella_generador = False
+        self.estrella_creditos = False
+        self.dia_interaccion_pared = None
+        self.cuevaAbierta = False
+        self.mateRecolectado = False
+        self.dia_recoleccion_mate = None
+        self.bono_mate_creditos_otorgado = False
+        self.martilloDisponible = False
+        self.martilloComprado = False
+        self.linternaComprada = False
         self.descargaDatos1Comprado = False
         self.descargaDatos2Comprado = False
         self.correos_recibidos = []
         self.correos_leidos = []
+        self.correos_programados = {}
         self.tormenta_arena = False
+
+    def agregar_creditos(self, cantidad):
+        self.creditos += cantidad
+        self.creditos_acumulados += cantidad
         

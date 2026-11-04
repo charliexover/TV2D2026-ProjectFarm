@@ -8,52 +8,59 @@ HITOS_ROVER = [
     {
         "id": "tierra_150",
         "atributo": "muestras_tierra",
-        "cantidad": 150,
+        "cantidad": 100,
         "creditos": 500,
     },
     {
         "id": "tierra_400",
         "atributo": "muestras_tierra",
-        "cantidad": 400,
-        "creditos": 1500,
+        "cantidad": 250,
+        "creditos": 2000,
     },
     {
         "id": "atmosfera_100",
         "atributo": "muestras_atmosfera",
-        "cantidad": 100,
+        "cantidad": 50,
         "creditos": 250,
     },
     {
         "id": "atmosfera_350",
         "atributo": "muestras_atmosfera",
-        "cantidad": 350,
+        "cantidad": 100,
         "creditos": 500,
     },
     {
         "id": "atmosfera_500",
         "atributo": "muestras_atmosfera",
-        "cantidad": 500,
+        "cantidad": 250,
         "creditos": 2000,
     },
     {
         "id": "minerales_100",
         "atributo": "minerales_recogidos",
-        "cantidad": 100,
-        "creditos": 350,
+        "cantidad": 50,
+        "creditos": 500,
     },
     {
         "id": "minerales_250",
         "atributo": "minerales_recogidos",
         "cantidad": 250,
-        "creditos": 800,
+        "creditos": 1500,
     },
     {
         "id": "minerales_500",
         "atributo": "minerales_recogidos",
         "cantidad": 500,
-        "creditos": 2000,
+        "creditos": 5000,
     },
 ]
+
+
+def hitos_rover_completados(game_state):
+    return all(
+        hito["id"] in game_state.hitos_rover_reclamados
+        for hito in HITOS_ROVER
+    )
 
 
 class SistemaRecompensas:
@@ -75,7 +82,7 @@ class SistemaRecompensas:
             ):
                 recompensa = hito["creditos"]
 
-                game_state.creditos += recompensa
+                game_state.agregar_creditos(recompensa)
                 creditos_ganados += recompensa
 
                 game_state.hitos_rover_reclamados.append(

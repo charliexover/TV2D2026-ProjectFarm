@@ -9,8 +9,8 @@ CORREOS = [
             "Bienvenido a tu nueva residencia en Marte, "
             "{jugador}.\n"
             "Como fue acordado, tu mision es terminar la construccion "
-             "de la base marciana y todos los creditos que generes seran tuyos "
-             "hasta un limite de 100mil creditos que equivalen a 500mil dolares."
+             "de la base marciana. Al terminarla se te acreditara en tu cuenta personal"
+             " 500mil dolares."
              "Seguiremos en contacto para informarte de cualquier novedad."
         ),
     },
@@ -31,46 +31,148 @@ CORREOS = [
         "id": "tutorial1",
         "dia_llegada": 1,
         "remitente": "Agencia Espacial",
-        "asunto": "Tutorial",
+        "asunto": "Tutorial 1",
         "mensaje": (
-            "Presiona E para interacturar con npcs y objetos.\n"
-            "Presiona click izquierdo para usar lo que tengas equipado en tu barra de inventario.\n"
-            "En el exterior presiona G para abrir el menu de mejoras. \n"
-            "Parcelas al oeste, hay oxigeno limitado no alejarse mucho"
+            "En tu pocesion tienes una regadera y semillas.\n"
+            "Sal fuera y ve al oeste donde veras un campo donde plantarlas.\n"
+            "El oxigeno es limitado asi que se recomienda no merodear mucho."
         ),
     },
     {
         "id": "dia_siguiente",
         "dia_llegada": 2,
         "remitente": "Agencia Espacial",
-        "asunto": "Venta de cosechas",
+        "asunto": "Tutorial 2",
         "mensaje": (
-            "El precio de venta de las cosechas es el siguiente:\n"
-            "Zanahoria: 8 cred \n"
-            "Papa: 12 cred \n"
-            "Tomate: 18 cred \n"
-            "Repollo: 44 cred"
+            "Presiona la tecla G para abrir el menu de mejoras.\n"
+            "Si quieres ver la cantidad de recursos que tienes presiona I.\n"
         ),
     },
     {
-        "id": "desconocido_1",
+        "id": "mision_estrellas",
+        "dia_llegada": 3,
+        "remitente": "Agencia Espacial",
+        "asunto": "Estrellas",
+        "mensaje": (
+            "Cada mision que cumplas agregará estrellas a la interfaz \n"
+            "superior derecha. Al conseguir las 5 podrás irte al este \n"
+            "donde te espera un cohete que te llevará a la Tierra. "
+        ),
+    },
+    {
+        "id": "centroDatos_completado",
+        "dia_llegada": None,
+        "requisito_objetivo": "estrella_centro_datos",
+        "remitente": "Agencia Espacial",
+        "asunto": "Centro de Datos Completado",
+        "mensaje": (
+            "Buen trabajo {jugador}.\n"
+            "Has completado el centro de datos exitosamente. \n"
+            "Te has ganado tu estrella del merito sigue asi."
+        ),
+    },
+    {
+        "id": "expediciones_completado",
+        "dia_llegada": None,
+        "requisito_objetivo": "estrella_expediciones",
+        "remitente": "Agencia Espacial",
+        "asunto": "Expediciones Completadas",
+        "mensaje": (
+            "Buen trabajo {jugador}.\n"
+            "Has completado todas las expediciones. \n"
+            "Te has ganado tu estrella del merito sigue asi."
+        ),
+    },
+    {
+        "id": "reciclaje_completado",
+        "dia_llegada": None,
+        "requisito_objetivo": "reciclajeDisponible",
+        "remitente": "Agencia Espacial",
+        "asunto": "Reciclaje Completado",
+        "mensaje": (
+            "Buen trabajo {jugador}.\n"
+            "Has construido el centro de reciclaje. \n"
+            "Te has ganado tu estrella del merito sigue asi."
+        ),
+    },
+    {
+        "id": "generador_completado",
+        "dia_llegada": None,
+        "requisito_objetivo": "estrella_generador",
+        "remitente": "Agencia Espacial",
+        "asunto": "Generador Completado",
+        "mensaje": (
+            "Buen trabajo {jugador}.\n"
+            "Has reparado el generador de la base. \n"
+            "Te has ganado tu estrella del merito sigue asi."
+        ),
+    },
+    {
+        "id": "creditos_completado",
+        "dia_llegada": None,
+        "requisito_objetivo": "estrella_creditos",
+        "remitente": "Agencia Espacial",
+        "asunto": "Créditos Completados",
+        "mensaje": (
+            "Buen trabajo {jugador}.\n"
+            "Has conseguido una suma total de 100mil créditos. \n"
+            "Te has ganado tu estrella del merito sigue asi."
+        ),
+    },
+    {
+        "id": "mascota_estado1",
         "dia_llegada": 5,
-        "remitente": "Desconocido",
-        "asunto": "solo",
+        "remitente": "Señor Smith",
+        "asunto": " {mascota} ",
         "mensaje": (
-            "Te vemos.............\n\n"
-            "........................Buscamos...\n\n"
-            "...................Metal no?...\n\n"
-            "....Esperar.."
+            "Buenos dias o noches nosé como será ahi arriba. \n"
+            "{mascota} esta de buen humor hoy, pasaron una noticia sobre usted \n"
+            "en la tele y creo que eso le hizo levantar el animo. \n"
+            "Saludos cordiales."
         ),
     },
     {
-        "id": "dia100",
-        "dia_llegada": 100,
-        "remitente": "Dev",
-        "asunto": "100 dias",
+        "id": "mascota_estado2",
+        "dia_llegada": 15,
+        "remitente": "Señor Smith",
+        "asunto": " {mascota} ",
         "mensaje": (
-            "Gracias por jugar"
+            "Buenos dias o noches nosé como será ahi arriba. \n"
+            "El otro dia compré un muñeco de astronauta en una tienda y se lo di a {mascota} \n" 
+            "No se despega de el muñeco y lo abraza todo el tiempo. \n"
+            "Saludos cordiales." 
+        ),
+    },
+    {
+        "id": "dev_1",
+        "dia_llegada": 50,
+        "remitente": "Developer",
+        "asunto": " Gracias ",
+        "mensaje": (
+            "Me pone muy contento que pruebes mi juego :)" 
+        ),
+    },
+    {
+        "id": "tormenta_advertencia",
+        "dia_llegada": 7,
+        "remitente": "Agencia Espacial",
+        "asunto": " Advertencia de Tormenta ",
+        "mensaje": (
+            "Se ha detectado una tormenta de arena en la zona. \n"
+            "Se recomienda no estar mucho tiempo afuera. \n"
+            "Investigaremos una forma de que pueda protegerse. \n"
+            "Por el momento tenga mucho cuidado" 
+        ),
+    },
+    {
+        "id": "tormenta_advertencia2",
+        "dia_llegada": 14,
+        "remitente": "Agencia Espacial",
+        "asunto": " Investigacion completada ",
+        "mensaje": (
+            "Tiene a su disposición un nuevo traje anti-tormenta. \n"
+            "Abra el menu de mejoras y desbloquee el traje. \n"
+            "Esperemos que le sea útil."
         ),
     },
 ]
@@ -95,11 +197,27 @@ class GestorCorreos:
     def actualizar_dia(self, dia_actual):
         for correo in CORREOS:
             identificador = correo["id"]
+            if identificador in self.game_state.correos_recibidos:
+                continue
 
-            if (
-                correo["dia_llegada"] <= dia_actual
-                and identificador not in self.game_state.correos_recibidos
-            ):
+            requisito_objetivo = correo.get("requisito_objetivo")
+            if requisito_objetivo is not None:
+                dia_programado = self.game_state.correos_programados.get(
+                    identificador
+                )
+                if (
+                    dia_programado is None
+                    and getattr(self.game_state, requisito_objetivo)
+                ):
+                    dia_programado = dia_actual + 1
+                    self.game_state.correos_programados[identificador] = (
+                        dia_programado
+                    )
+
+                if dia_programado is not None and dia_programado <= dia_actual:
+                    self.game_state.correos_recibidos.append(identificador)
+                    del self.game_state.correos_programados[identificador]
+            elif correo["dia_llegada"] <= dia_actual:
                 self.game_state.correos_recibidos.append(identificador)
 
     def obtener_correos(self):

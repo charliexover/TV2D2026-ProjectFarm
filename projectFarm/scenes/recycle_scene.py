@@ -3,7 +3,7 @@ import os
 
 import pygame
 
-from engine.audio import reproducir_sonido_interaccion
+from engine.audio import reproducir_sonido_tomar_chatarra
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado
 from projectFarm.entities import Jugador
@@ -113,7 +113,7 @@ class RecycleScene:
                 and self.game_state.estado_procesamiento != "procesandose"
                 and self.game_state.chatarra > 0
             ):
-                reproducir_sonido_interaccion()
+                reproducir_sonido_tomar_chatarra()
                 self.game_state.chatarra_en_proceso = min(
                     20, self.game_state.chatarra
                 )
@@ -131,7 +131,7 @@ class RecycleScene:
                 and self.game_state.dia_actual
                 >= self.game_state.dia_inicio_procesamiento + 2
             ):
-                reproducir_sonido_interaccion()
+                reproducir_sonido_tomar_chatarra()
                 self.game_state.materiales += (
                     self.game_state.chatarra_en_proceso
                 )

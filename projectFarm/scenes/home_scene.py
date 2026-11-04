@@ -3,7 +3,11 @@ import os
 
 import pygame
 
-from engine.audio import reproducir_sonido_interaccion
+from engine.audio import (
+    registrar_sonido_efecto,
+    reproducir_sonido_interaccion,
+    reproducir_sonido_pc,
+)
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado
 from projectFarm.entities import Jugador
@@ -16,6 +20,7 @@ class HomeScene:
     DURACION_FUNDIDO = 800
     DURACION_CARTEL_DIA = 2100
     INTERVALO_FRAME_SUENO = 250
+    CORREOS_POR_PAGINA = 5
     PRECIOS_SEMILLAS = {
         1: 2,
         2: 5,
@@ -29,6 +34,7 @@ class HomeScene:
         self.gestor_correos = GestorCorreos(game_state)
         self.gestor_correos.actualizar_dia(game_state.dia_actual)
         self.correo_seleccionado = None
+        self.pagina_correos = 0
         self.interfaz_estado = InterfazEstado()
         self.jugador = Jugador()
         self.primera_entrada = True
@@ -62,10 +68,28 @@ class HomeScene:
             for sprite in spritesheet_sueno.get_animation_frames("default")
         ]
         ruta_musica_sueno = os.path.join(
-            os.path.dirname(__file__), "..", "assets", "SleepSong.wav"
+            os.path.dirname(__file__), "..", "sounds", "SleepSong.wav"
         )
         self.musica_sueno = pygame.mixer.Sound(
             os.path.normpath(ruta_musica_sueno)
+        )
+        self.sonido_comprar = registrar_sonido_efecto(
+            pygame.mixer.Sound(
+                os.path.normpath(
+                    os.path.join(
+                        os.path.dirname(__file__), "..", "sounds", "comprar.wav"
+                    )
+                )
+            )
+        )
+        self.sonido_vender = registrar_sonido_efecto(
+            pygame.mixer.Sound(
+                os.path.normpath(
+                    os.path.join(
+                        os.path.dirname(__file__), "..", "sounds", "vender.wav"
+                    )
+                )
+            )
         )
         self.canal_musica_sueno = None
         self.transicion_sueno_inicio = None
@@ -123,7 +147,14 @@ class HomeScene:
             cantidad = getattr(self.game_state, atributo_cosecha)
             creditos += cantidad * cultivo["precio_venta"]
             setattr(self.game_state, atributo_cosecha, 0)
-        self.game_state.creditos += creditos
+        self.game_state.agregar_creditos(creditos)
+        return creditos
+
+    def vender_materiales(self):
+        materiales = self.game_state.materiales
+        creditos = materiales * 5
+        self.game_state.materiales = 0
+        self.game_state.agregar_creditos(creditos)
         return creditos
 
     def _obtener_semillas_disponibles(self):
@@ -146,10 +177,10 @@ class HomeScene:
         if self.menu_pc == "leer_correo":
             alto = 360
         elif self.menu_pc == "correos":
-            filas = len(self.gestor_correos.obtener_correos()) + 1
-            alto = 136 + max(filas, 1) * 44
+            filas = len(self._obtener_opciones_menu_pc())
+            alto = 136 + filas * 44
         elif self.menu_pc == "principal":
-            filas = 3
+            filas = len(self._obtener_opciones_menu_pc())
             alto = 136 + filas * 44
         else:
             filas = len(self._obtener_semillas_disponibles()) + 1
@@ -167,11 +198,29 @@ class HomeScene:
             limites_pantalla.centery - alto // 2,
         )
 
+    def _obtener_pagina_correos(self):
+        correos = self.gestor_correos.obtener_correos()
+        cantidad_paginas = max(
+            1,
+            (
+                len(correos) + self.CORREOS_POR_PAGINA - 1
+            ) // self.CORREOS_POR_PAGINA,
+        )
+        self.pagina_correos = min(
+            max(self.pagina_correos, 0), cantidad_paginas - 1
+        )
+        inicio = self.pagina_correos * self.CORREOS_POR_PAGINA
+        return (
+            correos[inicio : inicio + self.CORREOS_POR_PAGINA],
+            cantidad_paginas,
+        )
+
     def _obtener_opciones_menu_pc(self):
         if self.menu_pc == "principal":
             return [
                 ("Comprar semillas", "comprar"),
                 ("Vender cosechas", "vender"),
+                ("Vender materiales (5 cr. c/u)", "vender_materiales"),
                 (
                     f"Leer correos ({self.gestor_correos.cantidad_no_leidos()})",
                     "correos",
@@ -180,8 +229,9 @@ class HomeScene:
 
         if self.menu_pc == "correos":
             opciones = []
+            correos, cantidad_paginas = self._obtener_pagina_correos()
 
-            for correo in self.gestor_correos.obtener_correos():
+            for correo in correos:
                 identificador = correo["id"]
 
                 indicador = (
@@ -199,6 +249,16 @@ class HomeScene:
 
             if not opciones:
                 opciones.append(("No tienes correos", "sin_correos"))
+
+            if cantidad_paginas > 1:
+                opciones.append(
+                    (
+                        f"< Anterior     Pagina "
+                        f"{self.pagina_correos + 1}/{cantidad_paginas}     "
+                        "Siguiente >",
+                        "paginar_correos",
+                    )
+                )
 
             opciones.append(("Volver", "volver"))
             return opciones
@@ -262,12 +322,19 @@ class HomeScene:
             if not rectangulo.collidepoint(posicion):
                 continue
 
+            if accion not in ("comprar", "vender") and not isinstance(
+                accion, int
+            ):
+                reproducir_sonido_pc()
+
             if accion == "comprar":
                 self.menu_pc = "semillas"
                 self.mensaje_pc = None
 
             elif accion == "vender":
                 creditos = self.vender_zanahorias()
+                if creditos:
+                    self.sonido_vender.play()
                 self._mostrar_mensaje_pc(
                     f"Cosechas vendidas por {creditos} créditos."
                     if creditos
@@ -275,8 +342,20 @@ class HomeScene:
                 )
                 self.menu_pc = None
 
+            elif accion == "vender_materiales":
+                creditos = self.vender_materiales()
+                if creditos:
+                    self.sonido_vender.play()
+                self._mostrar_mensaje_pc(
+                    f"Materiales vendidos por {creditos} créditos."
+                    if creditos
+                    else "No tienes materiales para vender."
+                )
+                self.menu_pc = None
+
             elif accion == "correos":
                 self.menu_pc = "correos"
+                self.pagina_correos = 0
                 self.mensaje_pc = None
 
             elif isinstance(accion, str) and accion.startswith("correo:"):
@@ -294,6 +373,14 @@ class HomeScene:
                 if self.correo_seleccionado is not None:
                     self.gestor_correos.marcar_leido(identificador)
                     self.menu_pc = "leer_correo"
+
+            elif accion == "paginar_correos":
+                ancho_seccion = rectangulo.width // 3
+                if posicion[0] < rectangulo.left + ancho_seccion:
+                    self.pagina_correos = max(self.pagina_correos - 1, 0)
+                elif posicion[0] >= rectangulo.left + 2 * ancho_seccion:
+                    self.pagina_correos += 1
+                    self._obtener_pagina_correos()
 
             elif accion == "volver_bandeja":
                 self.menu_pc = "correos"
@@ -328,17 +415,26 @@ class HomeScene:
                 return
 
         precio = self.PRECIOS_SEMILLAS[tipo_cultivo]
+        atributo_semilla = cultivo["semilla"]
+        cantidad_semillas = getattr(self.game_state, atributo_semilla)
+        if cantidad_semillas >= self.inventario.LIMITE_SEMILLAS:
+            self._mostrar_mensaje_pc(
+                f"No puedes llevar más de "
+                f"{self.inventario.LIMITE_SEMILLAS} semillas de este tipo."
+            )
+            return
+
         if self.game_state.creditos < precio:
             self._mostrar_mensaje_pc("No tienes créditos suficientes.")
             return
 
         self.game_state.creditos -= precio
-        atributo_semilla = cultivo["semilla"]
         setattr(
             self.game_state,
             atributo_semilla,
-            getattr(self.game_state, atributo_semilla) + 1,
+            cantidad_semillas + 1,
         )
+        self.sonido_comprar.play()
         self._mostrar_mensaje_pc(
             f"Compraste una semilla de {cultivo['nombre']} por "
             f"{precio} créditos."
@@ -406,7 +502,7 @@ class HomeScene:
         rectangulos = self._obtener_rectangulos_opciones_menu_pc(
             limites_pantalla
         )
-        for (etiqueta, _), (_, rectangulo) in zip(opciones, rectangulos):
+        for (etiqueta, accion), (_, rectangulo) in zip(opciones, rectangulos):
             color = (
                 (55, 55, 55)
                 if rectangulo.collidepoint(pygame.mouse.get_pos())
@@ -414,6 +510,46 @@ class HomeScene:
             )
             pygame.draw.rect(pantalla, color, rectangulo)
             pygame.draw.rect(pantalla, (220, 220, 220), rectangulo, 1)
+            if self.menu_pc == "correos" and accion == "paginar_correos":
+                _, cantidad_paginas = self._obtener_pagina_correos()
+                etiquetas_paginacion = (
+                    ("< Anterior", self.pagina_correos > 0),
+                    (
+                        f"Pagina {self.pagina_correos + 1}/"
+                        f"{cantidad_paginas}",
+                        True,
+                    ),
+                    (
+                        "Siguiente >",
+                        self.pagina_correos < cantidad_paginas - 1,
+                    ),
+                )
+                for indice, (texto, habilitado) in enumerate(
+                    etiquetas_paginacion
+                ):
+                    ancho_seccion = rectangulo.width // 3
+                    rect_seccion = pygame.Rect(
+                        rectangulo.left + indice * ancho_seccion,
+                        rectangulo.top,
+                        ancho_seccion
+                        if indice < 2
+                        else rectangulo.right
+                        - (rectangulo.left + indice * ancho_seccion),
+                        rectangulo.height,
+                    )
+                    superficie = self.fuente_menu_pc.render(
+                        texto,
+                        True,
+                        (255, 255, 255)
+                        if habilitado
+                        else (130, 130, 130),
+                    )
+                    pantalla.blit(
+                        superficie,
+                        superficie.get_rect(center=rect_seccion.center),
+                    )
+                continue
+
             texto = self.fuente_menu_pc.render(
                 etiqueta, True, (255, 255, 255)
             )
@@ -592,9 +728,9 @@ class HomeScene:
 
         if self.menu_pc is not None:
             for evento in eventos:
-                if evento.type == pygame.KEYDOWN and evento.key in (
-                    pygame.K_ESCAPE,
-                    pygame.K_e,
+                if (
+                    evento.type == pygame.KEYDOWN
+                    and evento.key == pygame.K_ESCAPE
                 ):
                     if self.menu_pc == "semillas":
                         self.menu_pc = "principal"
@@ -678,7 +814,7 @@ class HomeScene:
             elif self.jugador.rectangulo.colliderect(
                 self.obtener_pc(limites_pantalla)
             ):
-                reproducir_sonido_interaccion()
+                reproducir_sonido_pc()
                 self.menu_pc = "principal"
                 self.mensaje_pc = None
 

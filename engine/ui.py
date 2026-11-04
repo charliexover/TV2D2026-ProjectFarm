@@ -4,8 +4,12 @@ import pygame
 import math
 
 class Inventario:
+	LIMITE_SEMILLAS = 99
 	SLOT_MANO = 0
 	SLOT_REGADERA = 1
+	SLOT_MARTILLO = 2
+	SLOT_LINTERNA = 3
+	SLOT_MATE = 4
 	SLOT_SEMILLA_ZANAHORIA = 5
 	SLOTS_SEMILLAS = {
 		SLOT_SEMILLA_ZANAHORIA: 1,
@@ -71,6 +75,20 @@ class Inventario:
 		self.sprite_regadera = self._cargar_sprite_inventario(
 			ruta_assets, "regadera.png"
 		)
+		self.sprite_regadera_mejorada = self._cargar_sprite_inventario(
+			ruta_assets, "regaderaMejorada.png"
+		)
+		self.sprite_mate = self._cargar_sprite_inventario(
+			ruta_assets, "mate.png"
+		)
+		self.sprites_herramientas = {
+			self.SLOT_MARTILLO: self._cargar_sprite_inventario(
+				ruta_assets, "martillo.png"
+			),
+			self.SLOT_LINTERNA: self._cargar_sprite_inventario(
+				ruta_assets, "linterna.png"
+			),
+		}
 
 	@staticmethod
 	def _cargar_sprite_inventario(ruta_assets, nombre_archivo):
@@ -142,6 +160,18 @@ class Inventario:
 				pygame.draw.rect(pantalla, (232, 232, 215), casilla)
 				pygame.draw.rect(pantalla, (60, 65, 48), casilla, 2)
 
+			numero = self.fuente_cantidad.render(
+				str(indice + 1), True, (255, 255, 255)
+			)
+			numero_sombra = self.fuente_cantidad.render(
+				str(indice + 1), True, (25, 25, 20)
+			)
+			numero_rect = numero.get_rect(
+				topleft=(casilla.left + 3, casilla.top + 1)
+			)
+			pantalla.blit(numero_sombra, numero_rect.move(1, 1))
+			pantalla.blit(numero, numero_rect)
+
 			if indice == self.SLOT_MANO:
 				sprite_mano = (
 					self.sprite_mano_reforzada
@@ -162,11 +192,6 @@ class Inventario:
 				)[tipo_cultivo - 1]
 				cantidad_semillas = getattr(game_state, semilla)
 				desbloqueo = self.DESBLOQUEOS_SEMILLAS.get(tipo_cultivo)
-				if (
-					cantidad_semillas <= 0
-					and desbloqueo is None
-				):
-					continue
 				if desbloqueo is not None and not getattr(
 					game_state, desbloqueo
 				):
@@ -177,10 +202,10 @@ class Inventario:
 					sprite_semilla.get_rect(center=casilla.center),
 				)
 				cantidad = self.fuente_cantidad.render(
-					str(cantidad_semillas), True, (255, 255, 255)
+					str(cantidad_semillas), True, (255, 220, 40)
 				)
 				cantidad_rect = cantidad.get_rect(
-					topright=(casilla.right - 2, casilla.top + 1)
+					bottomright=(casilla.right - 2, casilla.bottom - 2)
 				)
 				sombra_cantidad = self.fuente_cantidad.render(
 					str(cantidad_semillas), True, (25, 25, 20)
@@ -191,9 +216,33 @@ class Inventario:
 				)
 				pantalla.blit(cantidad, cantidad_rect)
 			elif indice == self.SLOT_REGADERA:
+				sprite_regadera = (
+					self.sprite_regadera_mejorada
+					if game_state.mejorRegaderaComprada
+					else self.sprite_regadera
+				)
 				pantalla.blit(
-					self.sprite_regadera,
-					self.sprite_regadera.get_rect(center=casilla.center),
+					sprite_regadera,
+					sprite_regadera.get_rect(center=casilla.center),
+				)
+			elif indice in self.sprites_herramientas:
+				estado_compra = (
+					"martilloComprado"
+					if indice == self.SLOT_MARTILLO
+					else "linternaComprada"
+				)
+				if getattr(game_state, estado_compra):
+					sprite_herramienta = self.sprites_herramientas[indice]
+					pantalla.blit(
+						sprite_herramienta,
+						sprite_herramienta.get_rect(
+							center=casilla.center
+						),
+					)
+			elif indice == self.SLOT_MATE and game_state.mateRecolectado:
+				pantalla.blit(
+					self.sprite_mate,
+					self.sprite_mate.get_rect(center=casilla.center),
 				)
 
 
@@ -208,8 +257,27 @@ class InterfazEstado:
 		self.sprite_reloj = pygame.transform.scale(
 			pygame.image.load(ruta_reloj).convert_alpha(), (24, 24)
 		)
+		ruta_estrella = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"starSpriteOFF.png",
+		)
+		self.sprite_estrella = pygame.transform.scale(
+			pygame.image.load(ruta_estrella).convert_alpha(), (12, 12)
+		)
+		ruta_estrella_encendida = os.path.join(
+			os.path.dirname(__file__),
+			"..",
+			"projectFarm",
+			"assets",
+			"starSpriteON.png",
+		)
+		self.sprite_estrella_encendida = pygame.transform.scale(
+			pygame.image.load(ruta_estrella_encendida).convert_alpha(), (12, 12)
+		)
 		self.fuente = pygame.font.Font(None, 28)
-
 		ruta_zanahoria = os.path.join(
 					os.path.dirname(__file__), "..", "projectFarm", "assets", "zanahoriaIcon.png"
 				)
@@ -330,6 +398,11 @@ class InterfazEstado:
 
 		recursos = [
 			(
+				self.sprite_creditos,
+				"Créditos acum.",
+				game_state.creditos_acumulados,
+			),
+			(
 				self.sprite_zanahoria,
 				"Zanahorias",
 				game_state.zanahorias_cosechadas,
@@ -373,7 +446,7 @@ class InterfazEstado:
 			)
 			pantalla.blit(texto, (ventana.x + 55, y + 2))
 
-			y += 40
+			y += 32
 
 		# Instrucción para cerrar
 		ayuda = pygame.font.Font(None, 22).render(
@@ -421,6 +494,32 @@ class InterfazEstado:
 			texto_dia,
 			(posicion_x + 40, posicion_y + 20),
 		)
+		centros_estrella = (
+			(posicion_x + 79, posicion_y + 20),
+			(posicion_x + 97, posicion_y + 20),
+			(posicion_x + 115, posicion_y + 20),
+			(posicion_x + 88, posicion_y + 36),
+			(posicion_x + 106, posicion_y + 36),
+		)
+		for indice, centro in enumerate(centros_estrella):
+			sprite_estrella = self.sprite_estrella
+			estrella_completada = (
+				indice == 0 and game_state.estrella_centro_datos
+			) or (
+				indice == 1 and game_state.estrella_expediciones
+			) or (
+				indice == 2 and game_state.estrella_generador
+			) or (
+				indice == 3 and game_state.reciclajeDisponible
+			) or (
+				indice == 4 and game_state.estrella_creditos
+			)
+			if estrella_completada:
+				sprite_estrella = self.sprite_estrella_encendida
+			pantalla.blit(
+				sprite_estrella,
+				sprite_estrella.get_rect(center=centro),
+			)
 
 		# Barra de oxígeno
 		ancho_barra = 37 * escala

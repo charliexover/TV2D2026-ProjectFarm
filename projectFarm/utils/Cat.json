@@ -1,0 +1,45 @@
+{
+    "project_name": "Cat",
+    "spritesheet_path": "C:/python/TVJ2D_2026_ProyectoGranja/projectFarm/assets/catSprites.png",
+    "character_name": "Cat",
+    "animations": {
+        "default": [
+            {
+                "x": 0,
+                "y": 0,
+                "width": 26,
+                "height": 38,
+                "name": "sprite_0",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 26,
+                "y": 0,
+                "width": 26,
+                "height": 38,
+                "name": "sprite_1",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 52,
+                "y": 0,
+                "width": 26,
+                "height": 38,
+                "name": "sprite_2",
+                "description": "",
+                "animation": "default"
+            },
+            {
+                "x": 78,
+                "y": 0,
+                "width": 26,
+                "height": 38,
+                "name": "sprite_3",
+                "description": "",
+                "animation": "default"
+            }
+        ]
+    }
+}

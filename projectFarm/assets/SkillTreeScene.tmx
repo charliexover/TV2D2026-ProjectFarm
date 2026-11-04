@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="16" tileheight="16" infinite="0" nextlayerid="3" nextobjectid="23">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="16" tileheight="16" infinite="0" nextlayerid="3" nextobjectid="29">
  <tileset firstgid="1" source="SkillTree.tsx"/>
  <layer id="1" name="Skilltree" width="10" height="10">
   <data encoding="csv">
@@ -16,49 +16,58 @@
 </data>
  </layer>
  <objectgroup id="2" name="Nodos">
-  <object id="2" name="GuantesReforzados" x="68.3333" y="116.333">
+  <object id="2" name="GuantesReforzados" x="43.6666" y="92.333">
    <point/>
   </object>
-  <object id="3" name="OxigenoMaximo1" x="93.6667" y="116.333">
+  <object id="3" name="OxigenoMaximo1" x="97" y="86.9997">
    <point/>
   </object>
-  <object id="4" name="CentroDatos" x="64" y="84.3333">
+  <object id="4" name="CentroDatos" x="52.6667" y="51.6666">
    <point/>
   </object>
-  <object id="5" name="Expediciones" x="79.3333" y="76">
+  <object id="5" name="Expediciones" x="77" y="50">
    <point/>
   </object>
-  <object id="6" name="Reciclaje" x="96.3333" y="84.6666">
+  <object id="6" name="Reciclaje" x="100.333" y="51.6666">
    <point/>
   </object>
-  <object id="7" name="SemillaPapa" x="55" y="129.333">
+  <object id="7" name="SemillaPapa" x="36.6667" y="115.666">
    <point/>
   </object>
-  <object id="8" name="SemillaTomate" x="41" y="130">
+  <object id="8" name="SemillaTomate" x="44" y="130.667">
    <point/>
   </object>
-  <object id="10" name="SemillaRepollo" x="26.3334" y="129.333">
+  <object id="10" name="SemillaRepollo" x="28.6667" y="131.666">
    <point/>
   </object>
-  <object id="15" name="CintaReciclaje1" x="112.666" y="68">
+  <object id="17" name="DescargaDatos1" x="37" y="41.6666">
    <point/>
   </object>
-  <object id="16" name="CintaReciclaje2" x="127.667" y="57">
+  <object id="18" name="DescargaDatos2" x="26" y="33.3333">
    <point/>
   </object>
-  <object id="17" name="DescargaDatos1" x="47.3333" y="76.3333">
+  <object id="19" name="OxigenoMaximo2" x="109.667" y="100.667">
    <point/>
   </object>
-  <object id="18" name="DescargaDatos2" x="32" y="61">
+  <object id="20" name="OxigenoMaximo3" x="129.666" y="94.6667">
    <point/>
   </object>
-  <object id="19" name="OxigenoMaximo2" x="111" y="128.667">
+  <object id="23" name="MejorRegadera" x="57.3333" y="108.667">
    <point/>
   </object>
-  <object id="20" name="OxigenoMaximo3" x="128.333" y="117">
+  <object id="24" name="MejorExpedicion" x="77" y="32.6667">
    <point/>
   </object>
-  <object id="21" name="OxigenoMaximo" x="38.3333" y="104.334">
+  <object id="25" name="Radar" x="119" y="65.3333">
+   <point/>
+  </object>
+  <object id="26" name="TrajeAntiTormenta" x="88" y="116">
+   <point/>
+  </object>
+  <object id="27" name="Martillo" x="101" y="127.667">
+   <point/>
+  </object>
+  <object id="28" name="Linterna" x="45" y="66.6667">
    <point/>
   </object>
  </objectgroup>

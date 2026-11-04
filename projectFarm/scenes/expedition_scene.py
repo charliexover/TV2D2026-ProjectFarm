@@ -6,10 +6,14 @@ import pygame
 from pytmx import TiledTileLayer
 from pytmx.util_pygame import load_pygame
 
-from engine.audio import reproducir_sonido_interaccion
+from engine.audio import reproducir_sonido_interaccion, reproducir_sonido_pc
 from engine.ui import InterfazEstado
 from projectFarm.entities import Jugador, Rover
-from projectFarm.recompensasExpe import SistemaRecompensas, HITOS_ROVER
+from projectFarm.recompensasExpe import (
+    HITOS_ROVER,
+    SistemaRecompensas,
+    hitos_rover_completados,
+)
 
 
 class ExpeditionScene:
@@ -30,7 +34,7 @@ class ExpeditionScene:
             "dias": 2,
             "coste": 30,
             "probabilidad_exito": 0.85,
-            "recompensas": (25, 5, 2),
+            "recompensas": (25, 10, 5),
         },
         "marineris": {
             "nombre": "Valles Marineris",
@@ -38,7 +42,7 @@ class ExpeditionScene:
             "dias": 4,
             "coste": 70,
             "probabilidad_exito": 0.70,
-            "recompensas": (15, 50, 5),
+            "recompensas": (10, 25, 5),
         },
         "olimpo": {
             "nombre": "Monte Olimpo",
@@ -208,8 +212,20 @@ class ExpeditionScene:
 
         return boton_enviar, pygame.Rect(0, 0, 0, 0)
 
+    def _obtener_duracion_expedicion(self, destino):
+        dias = self.EXPEDICIONES[destino]["dias"]
+        if self.game_state.mejorExpedicionComprada:
+            return max(1, dias // 2)
+        return dias
+
     def _iniciar_expedicion(self, destino):
         expedicion = self.EXPEDICIONES[destino]
+        if hitos_rover_completados(self.game_state):
+            self.game_state.resultado_ultima_expedicion = (
+                "Centro de Expediciones completado. "
+                "No se pueden enviar más expediciones."
+            )
+            return False
         if self.game_state.expedicion_activa is not None:
             return False
         if self.game_state.creditos < expedicion["coste"]:
@@ -221,7 +237,8 @@ class ExpeditionScene:
         self.game_state.creditos -= expedicion["coste"]
         self.game_state.expedicion_activa = destino
         self.game_state.dia_finalizacion_expedicion = (
-            self.game_state.dia_actual + expedicion["dias"]
+            self.game_state.dia_actual
+            + self._obtener_duracion_expedicion(destino)
         )
         self.game_state.resultado_ultima_expedicion = ""
         return True
@@ -507,7 +524,7 @@ class ExpeditionScene:
 
             # Interacción con el PC.
             if self.jugador.rectangulo.colliderect(area_interaccion_pc):
-                reproducir_sonido_interaccion()
+                reproducir_sonido_pc()
                 self.monitor_abierto = True
                 self.arrastrando_mapa = False
                 return
@@ -825,7 +842,10 @@ class ExpeditionScene:
 
         destino_activo = self.game_state.expedicion_activa
 
-        if destino_activo is None:
+        if destino_activo is None and hitos_rover_completados(self.game_state):
+            color_estado = verde
+            texto_estado = "CENTRO DE EXPEDICIONES COMPLETADO"
+        elif destino_activo is None:
             color_estado = verde
             texto_estado = "ROVER DISPONIBLE"
         else:
@@ -913,10 +933,13 @@ class ExpeditionScene:
 
         if destino_seleccionado is not None:
             expedicion = self.EXPEDICIONES[destino_seleccionado]
+            dias_expedicion = self._obtener_duracion_expedicion(
+                destino_seleccionado
+            )
 
             detalles = (
                 f"{expedicion['nombre']} | "
-                f"{expedicion['dias']} dias | "
+                f"{dias_expedicion} dias | "
                 f"{expedicion['coste']} creditos"
             )
 
@@ -974,6 +997,7 @@ class ExpeditionScene:
         puede_enviar = (
             destino_seleccionado is not None
             and destino_activo is None
+            and not hitos_rover_completados(self.game_state)
             and self.game_state.creditos
             >= self.EXPEDICIONES[destino_seleccionado]["coste"]
         )
@@ -981,7 +1005,11 @@ class ExpeditionScene:
         self._dibujar_boton(
             pantalla,
             boton_enviar,
-            "CONFIRMAR ENVIO",
+            (
+                "CENTRO COMPLETADO"
+                if hitos_rover_completados(self.game_state)
+                else "CONFIRMAR ENVIO"
+            ),
             puede_enviar,
         )
 

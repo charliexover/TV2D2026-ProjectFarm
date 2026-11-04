@@ -4,7 +4,7 @@ import random
 
 import pygame
 
-from engine.audio import reproducir_sonido_interaccion
+from engine.audio import reproducir_sonido_pc
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado
 from projectFarm.entities import Jugador
@@ -82,7 +82,7 @@ class DataCenterScene:
 
             if self.game_state.progreso_centro_datos >= 100:
                 self.game_state.centro_datos_completado = True
-                self.game_state.creditos += 1000
+                self.game_state.agregar_creditos(1000)
                 self.mensaje_antena = (
                     "¡Centro de Datos completado! "
                     "Todos los datos han sido recopilados. 1000 creditos entregados."
@@ -220,7 +220,7 @@ class DataCenterScene:
                 and evento.key == pygame.K_e
                 and self.jugador.rectangulo.colliderect(self.pc.inflate(40, 40))
             ):
-                reproducir_sonido_interaccion()
+                reproducir_sonido_pc()
                 self.interactuar_pc()
 
     def draw(self, pantalla):

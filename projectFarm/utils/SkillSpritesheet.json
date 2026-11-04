@@ -9,7 +9,7 @@
                 "y": 3,
                 "width": 10,
                 "height": 10,
-                "name": "Parcela_OFF",
+                "name": "MejorRegadera_OFF",
                 "description": "Sugerido",
                 "animation": "default"
             },
@@ -45,7 +45,7 @@
                 "y": 67,
                 "width": 10,
                 "height": 10,
-                "name": "Correr_OFF",
+                "name": "TrajeAntiTormenta_OFF",
                 "description": "Sugerido",
                 "animation": "default"
             },
@@ -90,7 +90,7 @@
                 "y": 147,
                 "width": 10,
                 "height": 10,
-                "name": "TanqueOxigeno_OFF",
+                "name": "MejorExpedicion_OFF",
                 "description": "Sugerido",
                 "animation": "default"
             },
@@ -99,7 +99,7 @@
                 "y": 163,
                 "width": 10,
                 "height": 10,
-                "name": "CintaReciclaje_OFF",
+                "name": "Radar_OFF",
                 "description": "Sugerido",
                 "animation": "default"
             },
@@ -117,7 +117,7 @@
                 "y": 3,
                 "width": 10,
                 "height": 10,
-                "name": "Parcela_ON",
+                "name": "MejorRegadera_ON",
                 "description": "Sugerido",
                 "animation": "default"
             },
@@ -153,7 +153,7 @@
                 "y": 67,
                 "width": 10,
                 "height": 10,
-                "name": "Correr_ON",
+                "name": "TrajeAntiTormenta_ON",
                 "description": "Sugerido",
                 "animation": "default"
             },
@@ -198,7 +198,7 @@
                 "y": 147,
                 "width": 10,
                 "height": 10,
-                "name": "TanqueOxigeno_ON",
+                "name": "MejorExpedicion_ON",
                 "description": "Sugerido",
                 "animation": "default"
             },
@@ -207,7 +207,7 @@
                 "y": 163,
                 "width": 10,
                 "height": 10,
-                "name": "CintaReciclaje_ON",
+                "name": "Radar_ON",
                 "description": "Sugerido",
                 "animation": "default"
             },
