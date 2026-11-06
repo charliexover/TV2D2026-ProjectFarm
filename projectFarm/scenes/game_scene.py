@@ -790,6 +790,9 @@ class GameScene:
 				self.SEGUNDOS_POR_PUNTO_OXIGENO
 			)
 
+	def _pausar_consumo_oxigeno(self):
+		self.ultimo_update_oxigeno = pygame.time.get_ticks()
+
 	def _zona_segura_protege_jugador(self, jugador_mapa):
 		return self.zona_segura_oxigeno.collidepoint(jugador_mapa.center) and (
 			not self.game_state.tormenta_arena
@@ -874,7 +877,7 @@ class GameScene:
 				if self.game_state.materiales < self.COSTO_REPARACION_POWER:
 					self._mostrar_mensaje_antena(
 						f"Necesitas {self.COSTO_REPARACION_POWER} materiales "
-						"para reparar este Power."
+						"para reparar esta línea."
 					)
 					return
 				self.game_state.materiales -= self.COSTO_REPARACION_POWER
@@ -885,6 +888,7 @@ class GameScene:
 			return
 
 		if self.minijuego_antena.activo:
+			self._pausar_consumo_oxigeno()
 			if self.minijuego_antena.actualizar(eventos):
 				self.game_state.antena_encontrada = True
 				self._mostrar_mensaje_antena(
@@ -894,6 +898,7 @@ class GameScene:
 			return
 
 		if self.minijuego_power.activo:
+			self._pausar_consumo_oxigeno()
 			indice_power = self.power_en_minijuego
 			if self.minijuego_power.actualizar(eventos, limites_pantalla):
 				if indice_power is None:
@@ -906,14 +911,15 @@ class GameScene:
 				self.efectos_power[nombre].apagar()
 				progreso = self._obtener_progreso_energia()
 				self._mostrar_mensaje_antena(
-					f"{nombre} reparado. Energía del generador: "
+					f"Línea {indice_power + 1} reparada. "
+					"Energía del generador: "
 					f"{progreso}%."
 				)
 				self.power_en_minijuego = None
 			elif not self.minijuego_power.activo:
 				self.power_en_minijuego = None
 				self._mostrar_mensaje_antena(
-					"Pago conservado. Interactúa con el Power para reintentar."
+					"Interactúa con la línea para reintentar."
 				)
 			return
 
@@ -932,7 +938,7 @@ class GameScene:
 			return
 
 		for evento in eventos:
-					if evento.type == pygame.KEYDOWN and evento.key == pygame.K_i:
+					if evento.type == pygame.KEYDOWN and evento.key == pygame.K_TAB:
 						self.interfaz_estado.mostrar_inventario = (
 							not self.interfaz_estado.mostrar_inventario
 						)
@@ -1411,7 +1417,9 @@ class GameScene:
 
 			indice_power = int(nombre.removeprefix("Power")) - 1
 			if self.game_state.powers_reparados[indice_power]:
-				self._mostrar_mensaje_antena(f"{nombre} ya está reparado.")
+				self._mostrar_mensaje_antena(
+					f"Línea {indice_power + 1} ya está reparada."
+				)
 				return True
 
 			if (
@@ -1420,7 +1428,7 @@ class GameScene:
 			):
 				self._mostrar_mensaje_antena(
 					f"Necesitas {self.COSTO_REPARACION_POWER} materiales "
-					"para reparar este Power."
+					"para reparar esta línea."
 				)
 				return True
 
@@ -1480,12 +1488,9 @@ class GameScene:
 
 	def _actualizar_cursor_guante(self):
 		posicion_mundo = self.camera.to_world(pygame.mouse.get_pos())
-		sobre_parcela = (
-			self.game_state.parcela1Disponible
-			and any(
-				parcela.rectangulo.collidepoint(posicion_mundo)
-				for parcela in self.parcelas_por_nodo["Parcela1"]
-			)
+		sobre_parcela_al_alcance = (
+			self.obtener_parcela_jugador(self.jugador, posicion_mundo)
+			is not None
 		)
 		sobre_chatarra_cercana = (
 			any(
@@ -1506,7 +1511,7 @@ class GameScene:
 			and self.transicion_ending_inicio is None
 		)
 		tipo_cursor = None
-		if interfaz_bloquea_cursor and sobre_parcela:
+		if interfaz_bloquea_cursor and sobre_parcela_al_alcance:
 			if self.inventario.slot_seleccionado == Inventario.SLOT_MANO:
 				tipo_cursor = (
 					"reforzado"
@@ -1559,16 +1564,6 @@ class GameScene:
 			self.tipo_cursor_guante = tipo_cursor
 
 	def draw(self, pantalla):
-		if self.minijuego_power.activo:
-			self.restablecer_cursor()
-			self.minijuego_power.dibujar(pantalla)
-			return
-
-		if self.minijuego_antena.activo:
-			self.restablecer_cursor()
-			self.minijuego_antena.dibujar(pantalla)
-			return
-
 		limites_pantalla = pantalla.get_rect(		)
 		if self.fondo is not None:
 			rect_fondo = self.camera.apply(
@@ -1782,6 +1777,18 @@ class GameScene:
 			capa_tormenta.fill((205, 105, 45, 45))
 			pantalla.blit(capa_tormenta, (0, 0))
 
+		if self.minijuego_power.activo:
+			self.restablecer_cursor()
+			self.minijuego_power.dibujar(pantalla)
+			self._dibujar_interfaz_estado(pantalla)
+			return
+
+		if self.minijuego_antena.activo:
+			self.restablecer_cursor()
+			self.minijuego_antena.dibujar(pantalla)
+			self._dibujar_interfaz_estado(pantalla)
+			return
+
 		jugador_mapa = self.camera.to_map(
 			self.jugador.rectangulo
 		)
@@ -1897,12 +1904,17 @@ class GameScene:
 			else:
 				indice_power = int(nombre.removeprefix("Power")) - 1
 				if self.game_state.powers_reparados[indice_power]:
-					texto_indicacion = f"E: {nombre} ya reparado"
+					texto_indicacion = (
+						f"E: Línea {indice_power + 1} ya reparada"
+					)
 				elif self.game_state.powers_pagados[indice_power]:
-					texto_indicacion = f"E: reintentar reparación de {nombre}"
+					texto_indicacion = (
+						f"E: reintentar reparación de Línea "
+						f"{indice_power + 1}"
+					)
 				else:
 					texto_indicacion = (
-						f"E: reparar {nombre} "
+						f"E: reparar Línea {indice_power + 1} "
 						f"({self.COSTO_REPARACION_POWER} materiales)"
 					)
 			indicacion = self.fuente.render(
@@ -1949,6 +1961,19 @@ class GameScene:
 		self._dibujar_transicion_ending(pantalla)
 		self._actualizar_cursor_guante()
 
+	def _dibujar_interfaz_estado(self, pantalla):
+		jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
+		dentro_zona_segura = self._zona_segura_protege_jugador(
+			jugador_mapa
+		)
+		self.interfaz_estado.dibujar(
+			pantalla,
+			self.game_state,
+			mostrar_chatarra=True,
+			mostrar_materiales=True,
+			dentro_zona_segura=dentro_zona_segura,
+		)
+
 	def _tiene_todas_las_estrellas(self):
 		return all(
 			(
@@ -1992,7 +2017,7 @@ class GameScene:
 			raise RuntimeError("No hay un Power pendiente de confirmación.")
 		texto = self.fuente.render(
 			f"¿Usar {self.COSTO_REPARACION_POWER} materiales para reparar "
-			f"Power{indice_power + 1}?",
+			f"Línea {indice_power + 1}?",
 			True,
 			(255, 255, 255),
 		)

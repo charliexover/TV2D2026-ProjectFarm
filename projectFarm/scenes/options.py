@@ -11,7 +11,7 @@ class OptionsMenu:
 		"W, A, S, D: mover al personaje",
 		"Shift: alternar entre caminar y correr",
 		"E: interactuar con objetos y edificios",
-		"I: mostrar u ocultar el inventario",
+		"Tab: mostrar u ocultar el inventario",
 		"G: abrir el árbol de habilidades",
 		"R: mostrar u ocultar el radar (si está desbloqueado)",
 		"Clic izquierdo: seleccionar objetos, parcelas y opciones",

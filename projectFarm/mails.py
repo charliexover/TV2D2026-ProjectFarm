@@ -45,7 +45,7 @@ CORREOS = [
         "asunto": "Tutorial 2",
         "mensaje": (
             "Presiona la tecla G para abrir el menu de mejoras.\n"
-            "Si quieres ver la cantidad de recursos que tienes presiona I.\n"
+            "Si quieres ver la cantidad de recursos que tienes presiona Tab.\n"
         ),
     },
     {
@@ -144,12 +144,18 @@ CORREOS = [
         ),
     },
     {
-        "id": "dev_1",
-        "dia_llegada": 50,
-        "remitente": "Developer",
-        "asunto": " Gracias ",
+        "id": "mate_encontrado",
+        "dia_llegada": None,
+        "requisito_objetivo": "mateRecolectado",
+        "dia_referencia": "dia_recoleccion_mate",
+        "remitente": "Desconocido",
+        "asunto": " El mate ",
         "mensaje": (
-            "Me pone muy contento que pruebes mi juego :)" 
+            "Hola {jugador}.\n"
+            "Perdi ese mate en mi primera expedicion no entiendo como "
+            "pudo haber terminado dentro de una cueva. \n"
+            "Que la agencia no se entere de esto por favor, que te parece "
+            "un incentivo asi estaras mas cerca de esos 100mil creditos. Mira tu monitor de recursos :)" 
         ),
     },
     {
@@ -209,7 +215,17 @@ class GestorCorreos:
                     dia_programado is None
                     and getattr(self.game_state, requisito_objetivo)
                 ):
-                    dia_programado = dia_actual + 1
+                    dia_referencia = correo.get("dia_referencia")
+                    dia_base = (
+                        getattr(self.game_state, dia_referencia, None)
+                        if dia_referencia is not None
+                        else None
+                    )
+                    dia_programado = (
+                        dia_base + 1
+                        if dia_base is not None
+                        else dia_actual + 1
+                    )
                     self.game_state.correos_programados[identificador] = (
                         dia_programado
                     )

@@ -14,7 +14,7 @@ class SaveSlots:
             else Path.home()
             / "AppData"
             / "Local"
-            / "TVJ2D_2026_ProyectoGranja"
+            / "TVJ2D_2026_MarsAndMe"
             / "partidas"
         )
 

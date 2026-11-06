@@ -486,11 +486,10 @@ class SceneManager:
         if not isinstance(datos_parcelas, list):
             raise ValueError("Los datos de parcelas guardados no son validos.")
 
-        # Las partidas antiguas podían tener las 3 parcelas.
-        # Conservamos únicamente los datos de Parcela1.
-        if len(datos_parcelas) not in (
-            cantidad_parcelas_iniciales,
-            cantidad_parcelas_iniciales * 3,
+        # Las partidas antiguas podían tener menos parcelas o las 3 parcelas.
+        # Conservamos Parcela1 y dejamos vacías las parcelas nuevas.
+        if not 0 < len(datos_parcelas) <= cantidad_parcelas_iniciales and (
+            len(datos_parcelas) != cantidad_parcelas_iniciales * 3
         ):
             raise ValueError("La cantidad de parcelas guardadas no es valida.")
 
@@ -649,7 +648,10 @@ class SceneManager:
         if self.escena_actual in escenas_jugables:
             if (
                 self.escena_actual is self.granja
-                and self.granja.minijuego_power.activo
+                and (
+                    self.granja.minijuego_power.activo
+                    or self.granja.minijuego_antena.activo
+                )
             ):
                 self.granja.update(teclas, limites_pantalla, eventos)
                 return
@@ -721,7 +723,7 @@ class SceneManager:
                     return
             if any(
                 evento.type == pygame.KEYDOWN
-                and evento.key == pygame.K_i
+                and evento.key == pygame.K_TAB
                 for evento in eventos
             ):
                 self.escena_actual.interfaz_estado.mostrar_inventario = False
@@ -748,7 +750,7 @@ class SceneManager:
 
         if self.escena_actual in escenas_interiores and any(
             evento.type == pygame.KEYDOWN
-            and evento.key == pygame.K_i
+            and evento.key == pygame.K_TAB
             for evento in eventos
         ):
             self.escena_actual.interfaz_estado.mostrar_inventario = True

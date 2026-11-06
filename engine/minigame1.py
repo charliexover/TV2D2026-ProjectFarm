@@ -38,6 +38,13 @@ class Minijuego1:
         if not self.activo:
             return self.completado
 
+        if any(
+            evento.type == pygame.KEYDOWN and evento.key == pygame.K_ESCAPE
+            for evento in eventos
+        ):
+            self.activo = False
+            return False
+
         ahora = pygame.time.get_ticks()
         if self.ultimo_update is None:
             self.ultimo_update = ahora
@@ -82,10 +89,6 @@ class Minijuego1:
 
     def dibujar(self, pantalla):
         limites = pantalla.get_rect()
-        velo = pygame.Surface(limites.size, pygame.SRCALPHA)
-        velo.fill((0, 0, 0, 190))
-        pantalla.blit(velo, (0, 0))
-
         tarjeta = pygame.Rect(0, 0, min(600, limites.width - 40), 250)
         tarjeta.center = limites.center
         pygame.draw.rect(pantalla, (25, 30, 38), tarjeta)

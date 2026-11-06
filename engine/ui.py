@@ -450,7 +450,7 @@ class InterfazEstado:
 
 		# Instrucción para cerrar
 		ayuda = pygame.font.Font(None, 22).render(
-			"I: cerrar",
+			"Tab: cerrar",
 			True,
 			(200, 200, 200),
 		)

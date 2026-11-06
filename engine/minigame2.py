@@ -117,10 +117,6 @@ class Minijuego2:
 
     def dibujar(self, pantalla):
         limites = pantalla.get_rect()
-        velo = pygame.Surface(limites.size, pygame.SRCALPHA)
-        velo.fill((0, 0, 0, 200))
-        pantalla.blit(velo, (0, 0))
-
         ancho_tarjeta = min(720, max(280, limites.width - 32))
         tarjeta = pygame.Rect(0, 0, ancho_tarjeta, 300)
         tarjeta.center = limites.center
@@ -128,7 +124,7 @@ class Minijuego2:
         pygame.draw.rect(pantalla, (230, 235, 235), tarjeta, 2)
 
         titulo = self.fuente_titulo.render(
-            "Reparacion del Power", True, (255, 255, 255)
+            "Reparacion de la linea", True, (255, 255, 255)
         )
         pantalla.blit(
             titulo,
