@@ -51,7 +51,7 @@ La música fue creada gracias a la herramienta/juego OFFBEAT Demo (https://store
 </p>
 
 ## Recursos
-Video trailer: https://youtu.be/ReHsvBhp1JQ?si=DDwrVrBsDfJrRKBd 
+Video trailer: https://youtu.be/Nt0InTPWhlU
 
 Build del juego: https://drive.google.com/drive/folders/1fzQTyvsZ-HQ3b9SyXfWw6beyGqmrA3D3?usp=drive_link
 
