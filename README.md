@@ -26,11 +26,11 @@ La idea era hacer un juego con un diseño minimalista parecido a Minit (https://
 Creado a mano pixel por pixel utilizando la herramienta Libresprite (https://libresprite.github.io/)
 <p align="left">
   <img src="screenshots/spritesheetAstro.png" width="192">
-  <img src="screenshots/spritesheetExterior.png" width="240">
+  <img src="screenshots/SpritesheetExterior.png" width="240">
 </p>
 Se tomó como referencias fotos del paisaje de Marte para diseñar los sprites y la paleta de colores.
 <p align="left">
-  <img src="screenshots/marsphoto.jpg" width="192">
+  <img src="screenshots/marsPhoto.jpg" width="192">
   <img src="screenshots/marsWall.png" width="240">
 </p>
 
