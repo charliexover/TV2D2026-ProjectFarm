@@ -3,6 +3,8 @@ import os
 
 import pygame
 
+from projectFarm.localization import LocalizedFont, translate
+
 from engine.audio import (
     registrar_sonido_efecto,
     reproducir_sonido_interaccion,
@@ -52,8 +54,8 @@ class HomeScene:
             pygame.Rect(360, 495, 300, 10),
         ]
         self.colores_cuadrados = [(255, 120, 120), (120, 200, 255), (120, 255, 170), (255, 210, 120), (255, 210, 120)]
-        self.fuente = pygame.font.Font(None, 28)
-        self.fuente_menu_pc = pygame.font.Font(None, 26)
+        self.fuente = LocalizedFont(None, 28)
+        self.fuente_menu_pc = LocalizedFont(None, 26)
         self.menu_pc = None
         self.mensaje_pc = None
         self.mensaje_pc_hasta = 0
@@ -235,7 +237,7 @@ class HomeScene:
                 identificador = correo["id"]
 
                 indicador = (
-                    "[Nuevo] "
+                    translate("[Nuevo] ")
                     if not self.gestor_correos.esta_leido(identificador)
                     else ""
                 )
@@ -515,8 +517,7 @@ class HomeScene:
                 etiquetas_paginacion = (
                     ("< Anterior", self.pagina_correos > 0),
                     (
-                        f"Pagina {self.pagina_correos + 1}/"
-                        f"{cantidad_paginas}",
+                        f"Página {self.pagina_correos + 1}/{cantidad_paginas}",
                         True,
                     ),
                     (
@@ -624,7 +625,7 @@ class HomeScene:
         y = rect_dialogo.top + 140
         alto_linea = self.fuente_menu_pc.get_linesize()
 
-        for parrafo in correo["mensaje"].split("\n"):
+        for parrafo in translate(correo["mensaje"]).split("\n"):
             if not parrafo:
                 y += alto_linea
                 continue
@@ -868,7 +869,7 @@ class HomeScene:
                 self.obtener_area_interaccion_cama(limites_pantalla)
             ):
                 indicacion = self.fuente.render(
-                    "E: avanzar dia", True, (255, 255, 255)
+                    "E: avanzar día", True, (255, 255, 255)
                 )
                 pantalla.blit(
                     indicacion,
@@ -982,7 +983,7 @@ class HomeScene:
 
         if tiempo_transcurrido >= inicio_cartel_dia:
             superficie_dia = self.fuente.render(
-                f"DIA {self.dia_mostrado}", True, (255, 255, 255)
+                f"DÍA {self.dia_mostrado}", True, (255, 255, 255)
             )
             if tiempo_transcurrido >= inicio_fundido_entrada:
                 superficie_dia.set_alpha(opacidad)

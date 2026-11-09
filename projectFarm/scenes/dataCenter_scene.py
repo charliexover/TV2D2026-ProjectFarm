@@ -4,6 +4,8 @@ import random
 
 import pygame
 
+from projectFarm.localization import LocalizedFont, translate
+
 from engine.audio import reproducir_sonido_pc
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado
@@ -41,7 +43,7 @@ class DataCenterScene:
             (255, 210, 120),
             (255, 210, 120),
         ]
-        self.fuente = pygame.font.Font(None, 28)
+        self.fuente = LocalizedFont(None, 28)
         self.inventario = inventario
         self.fondo = self._cargar_fondo()
         self.mensaje_antena = None
@@ -266,7 +268,8 @@ class DataCenterScene:
 
         if self.mensaje_antena is not None:
             lineas = self._envolver_texto_mensaje(
-                self.mensaje_antena, limites_pantalla.width - 240
+                translate(self.mensaje_antena),
+                limites_pantalla.width - 240,
             )
             alto = max(80, len(lineas) * self.fuente.get_linesize() + 24)
             cuadro_mensaje = pygame.Rect(

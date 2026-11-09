@@ -1,5 +1,7 @@
 import pygame
 
+from projectFarm.localization import translate
+
 
 DIALOGOS_NPC = {
     "Ram": {
@@ -125,8 +127,9 @@ class DialogoNPC:
 
         limites_pantalla = pantalla.get_rect()
         nodo_dialogo = self.dialogos[self.nodo_actual]
+        texto = translate(nodo_dialogo["texto"])
         cuadro_dialogo, lineas_dialogo = self._obtener_cuadro_dialogo(
-            limites_pantalla, nodo_dialogo["texto"]
+            limites_pantalla, texto
         )
         pygame.draw.rect(pantalla, (0, 0, 0), cuadro_dialogo)
         pygame.draw.rect(pantalla, (255, 255, 255), cuadro_dialogo, 2)
@@ -141,7 +144,10 @@ class DialogoNPC:
                 ),
             )
 
-        opciones = nodo_dialogo["opciones"]
+        opciones = [
+            (translate(texto_opcion), destino)
+            for texto_opcion, destino in nodo_dialogo["opciones"]
+        ]
         if not opciones:
             return
 

@@ -3,6 +3,8 @@ import os
 
 import pygame
 
+from projectFarm.localization import LocalizedFont
+
 from engine.audio import reproducir_sonido_tomar_chatarra
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado
@@ -43,7 +45,7 @@ class RecycleScene:
             (180, 210, 255),
             (180, 210, 255),
         ]
-        self.fuente = pygame.font.Font(None, 28)
+        self.fuente = LocalizedFont(None, 28)
         self.inventario = inventario
         self.fondo = self._cargar_fondo()
         ruta_chatarra = os.path.join(
@@ -227,7 +229,7 @@ class RecycleScene:
             texto_interaccion = (
                 f"E: retirar {self.game_state.chatarra_en_proceso} materiales"
                 if dias_procesando >= 2
-                else f"Procesando: faltan {2 - dias_procesando} dias"
+                else f"Procesando: faltan {2 - dias_procesando} días"
             )
             indicacion = self.fuente.render(
                 texto_interaccion, True, (255, 255, 255)

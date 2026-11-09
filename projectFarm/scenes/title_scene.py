@@ -1,6 +1,8 @@
 
 import os
 import pygame
+
+from projectFarm.localization import LocalizedFont
 from ..entities import Jugador
 
 class TitleScene:
@@ -40,14 +42,14 @@ class TitleScene:
         self.tiempo_anterior = pygame.time.get_ticks()
 
         # Título
-        self.fuente = pygame.font.Font(None, 48)
+        self.fuente = LocalizedFont(None, 48)
         self.texto = self.fuente.render(
             "Iniciar partida", True, (255, 255, 255)
         )
         self.boton_rect = self.texto.get_rect()
 
         # Pie de página
-        self.fuente_pie = pygame.font.Font(None, 18)
+        self.fuente_pie = LocalizedFont(None, 18)
         self.texto_pie = self.fuente_pie.render(
             "© 2026 - TV2D Facultad de Ingeniería "
             "Tecnólogo en Informática - Desarrollado por Charliexover",
@@ -191,9 +193,18 @@ class TitleScene:
             pantalla.get_rect().centerx - 150,
             pantalla.get_rect().centery
         )
+        self.texto = self.fuente.render(
+            "Iniciar partida", True, (255, 255, 255)
+        )
         pantalla.blit(self.texto, self.boton_rect)
 
         # Pie de página
+        self.texto_pie = self.fuente_pie.render(
+            "© 2026 - TV2D Facultad de Ingeniería "
+            "Tecnólogo en Informática - Desarrollado por Charliexover",
+            True,
+            (220, 220, 220),
+        )
         self.pie_rect.midbottom = (
             pantalla.get_rect().centerx,
             pantalla.get_height() - 1

@@ -2,6 +2,8 @@ import random
 
 import pygame
 
+from projectFarm.localization import LocalizedFont
+
 from engine.audio import reproducir_sonido_pc
 
 
@@ -9,19 +11,6 @@ class Minijuego1:
     CANTIDAD_ACIERTOS = 3
     VELOCIDAD_PUNTO = 0.85
     ANCHO_ZONA = 0.13
-
-    def __init__(self):
-        self.activo = False
-        self.completado = False
-        self.aciertos = 0
-        self.posicion_punto = 0.0
-        self.direccion = 1
-        self.inicio_zona = 0.5
-        self.ultimo_update = None
-        self.puede_acertar = True
-        self.mensaje = "Presiona E cuando el punto este en la zona."
-        self.fuente_titulo = pygame.font.Font(None, 40)
-        self.fuente = pygame.font.Font(None, 28)
 
     def iniciar(self):
         self.activo = True
@@ -32,7 +21,9 @@ class Minijuego1:
         self.inicio_zona = random.uniform(0.05, 1 - self.ANCHO_ZONA - 0.05)
         self.ultimo_update = pygame.time.get_ticks()
         self.puede_acertar = True
-        self.mensaje = "Presiona E cuando el punto este en la zona."
+        self.mensaje = "Presiona E cuando el punto esté en la zona."
+        self.fuente_titulo = LocalizedFont(None, 40)
+        self.fuente = LocalizedFont(None, 28)
 
     def actualizar(self, eventos):
         if not self.activo:
@@ -83,7 +74,7 @@ class Minijuego1:
             else:
                 self.aciertos = 0
                 self.puede_acertar = True
-                self.mensaje = "Datos corruptos vuelve a intentarlo."
+                self.mensaje = "Datos corruptos. Vuelve a intentarlo."
 
         return False
 
@@ -131,11 +122,3 @@ class Minijuego1:
         pygame.draw.rect(pantalla, (55, 190, 105), zona)
         x_punto = round(inicio_x + ancho_linea * self.posicion_punto)
         pygame.draw.circle(pantalla, (255, 225, 80), (x_punto, y), 10)
-
-        instruccion = self.fuente.render(
-            "Pulsa E para acertar", True, (255, 255, 255)
-        )
-        pantalla.blit(
-            instruccion,
-            instruccion.get_rect(midtop=(tarjeta.centerx, tarjeta.top + 198)),
-        )

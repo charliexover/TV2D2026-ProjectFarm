@@ -3,6 +3,8 @@ import xml.etree.ElementTree as ET
 
 import pygame
 
+from projectFarm.localization import LocalizedFont, translate
+
 from engine.audio import reproducir_sonido_pc
 from engine.spritesheet import Spritesheet
 from projectFarm.farm import CULTIVOS
@@ -83,14 +85,14 @@ class SkillTreeMenu:
 			"estado": "semillaPapaDesbloqueada",
 			"costo": 25,
 			"cultivo": 2,
-			"nombre": "semilla de papa",
+			"nombre": "Semilla de papa",
 			"descripcion": "Desbloquea el cultivo de papas.",
 		},
 		"SemillaTomate": {
 			"estado": "semillaTomateDesbloqueada",
 			"costo": 100,
 			"cultivo": 3,
-			"nombre": "semilla de tomate",
+			"nombre": "Semilla de tomate",
 			"descripcion": "Desbloquea el cultivo de tomates.",
 			"requiere": "semillaPapaDesbloqueada",
 			"requisito_nombre": "la semilla de papa",
@@ -99,7 +101,7 @@ class SkillTreeMenu:
 			"estado": "semillaRepolloDesbloqueada",
 			"costo": 150,
 			"cultivo": 4,
-			"nombre": "semilla de repollo",
+			"nombre": "Semilla de repollo",
 			"descripcion": "Desbloquea el cultivo de repollos.",
 			"requiere": "semillaTomateDesbloqueada",
 			"requisito_nombre": "la semilla de tomate",
@@ -167,9 +169,9 @@ class SkillTreeMenu:
 	def __init__(self):
 		self.abierto = False
 		self.dialogo = None
-		self.fuente_dialogo = pygame.font.Font(None, 28)
-		self.fuente_boton = pygame.font.Font(None, 26)
-		self.fuente_tooltip = pygame.font.Font(None, 22)
+		self.fuente_dialogo = LocalizedFont(None, 28)
+		self.fuente_boton = LocalizedFont(None, 26)
+		self.fuente_tooltip = LocalizedFont(None, 22)
 		ruta_scenes = os.path.dirname(__file__)
 		ruta_assets = os.path.normpath(
 			os.path.join(ruta_scenes, "..", "assets")
@@ -286,7 +288,7 @@ class SkillTreeMenu:
 			cultivo = CULTIVOS[cultivo_id]
 			lineas.append(
 				f"Tiempo de crecimiento: "
-				f"{cultivo['dias_crecimiento']} dias"
+				f"{cultivo['dias_crecimiento']} días"
 			)
 			lineas.append(
 				f"Precio de venta: {cultivo['precio_venta']} créditos"
@@ -346,6 +348,9 @@ class SkillTreeMenu:
 		lineas_sin_ajustar = self._texto_hover_nodo(
 			nombre_nodo, game_state
 		)
+		lineas_sin_ajustar = [
+			translate(texto) for texto in lineas_sin_ajustar
+		]
 		ancho_maximo = min(420, pantalla.get_width() - 32)
 		lineas = []
 		for texto in lineas_sin_ajustar:
@@ -604,7 +609,7 @@ class SkillTreeMenu:
 		rect_dialogo = self._rectangulo_dialogo(pantalla.get_rect())
 		pygame.draw.rect(pantalla, (12, 14, 24), rect_dialogo)
 		pygame.draw.rect(pantalla, (235, 235, 245), rect_dialogo, 2)
-		lineas = self.dialogo["texto"].split()
+		lineas = translate(self.dialogo["texto"]).split()
 		renglones = []
 		renglon = ""
 		for palabra in lineas:

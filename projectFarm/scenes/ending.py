@@ -2,29 +2,34 @@ import os
 
 import pygame
 
+from projectFarm.localization import LocalizedFont
+
 
 class EndingScene:
     FRASES = (
-        "La mision de la agencia fue un exito.",
-        "A lo largo de los meses muchos\nastronautas empezaron a poblar Marte.",
-        "Yo regresé a la tierra puesto que mi\nmision personal no había terminado..",
-        "Usé todo el dinero que habia ganado\ny despues de unos dias de recuperacion\nal fin todo habia pasado.",
+        "La misión de la agencia fue un éxito.",
+        "A lo largo de los meses,",
+        "muchos astronautas empezaron a poblar Marte.",
+        "Yo regresé a la Tierra,",
+        "mi misión personal no había terminado...",
+        "Usé todo el dinero que había ganado",
+        " y después de unos días de recuperación, al fin todo había pasado.",
     )
     DURACION_FUNDIDO_TEXTO = 0.75
-    DURACION_ESPERA_TEXTO = 3.0
+    DURACION_ESPERA_TEXTO = 1.0
     DURACION_FUNDIDO_FONDO = 1.5
     ESPERA_FRASES_FINALES = 2.0
-    DURACION_FRASE_FINAL = 3.0
+    DURACION_FRASE_FINAL = 4.0
     INTERVALO_FRAME_MASCOTA = 180
     POSICION_MASCOTA = (38, 73)
     VELOCIDAD_CREDITOS = 25
     CREDITOS = (
         ("CRÉDITOS", "titulo"),
-        ("Desarrollo", "seccion"),
+        ("Desarrollo y programación", "seccion"),
         ("Charliexover", "texto"),
         ("Arte y animaciones", "seccion"),
         ("Charliexover", "texto"),
-        ("Recursos fotograficos", "seccion"),
+        ("Recursos fotográficos", "seccion"),
         ("Mars in Full View (PIA05049)", "texto"),
         ("NASA / Jet Propulsion Laboratory (JPL) / Cornell University", "texto"),
         ("Fuente: NASA Science Photojournal", "texto"),
@@ -37,14 +42,12 @@ class EndingScene:
         ("Visual Studio Code", "texto"),
         ("Pygame", "texto"),
         ("Música y sonido", "seccion"),
-        ("MarsAndMeIntro, OneDayInMars", "texto"),
+        ("MarsAndMeIntro, OneDayInMars, OneTormentDayInMars, HappyEnding", "texto"),
         ("Compuestas en OFFBEAT Demo por Charliexover", "texto"),
         ("Efectos de sonido editados con AudioMass - Audio editor", "texto"),
         ("Gracias especiales", "seccion"),
         ("Biogeorge", "texto"),
         ("Remmnt", "texto"),
-        ("", "texto"),
-        ("", "texto"),
         ("", "texto"),
         ("", "texto"),
         ("", "texto"),
@@ -87,7 +90,7 @@ class EndingScene:
             getattr(game_state, "nombre_mascota", None) or "mi mascota"
         )
         frases_finales = (
-            "A partir de ahora queda disfrutar",
+            "A partir de ahora, queda disfrutar",
             f"Solo {nombre_mascota} y yo",
         )
         nombre_sprite = (
@@ -110,11 +113,11 @@ class EndingScene:
             )
             for indice in range(spritesheet_mascota.get_width() // 26)
         ]
-        self.fuente = pygame.font.Font(None, 36)
+        self.fuente = LocalizedFont(None, 36)
         self.fuentes_creditos = {
-            "titulo": pygame.font.Font(None, 48),
-            "seccion": pygame.font.Font(None, 36),
-            "texto": pygame.font.Font(None, 30),
+            "titulo": LocalizedFont(None, 48),
+            "seccion": LocalizedFont(None, 36),
+            "texto": LocalizedFont(None, 30),
         }
         self.superficies_creditos = [
             (

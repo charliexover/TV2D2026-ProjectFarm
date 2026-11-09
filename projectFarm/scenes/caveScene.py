@@ -2,6 +2,8 @@ import os
 import xml.etree.ElementTree as ET
 
 import pygame
+
+from projectFarm.localization import LocalizedFont
 from pytmx.util_pygame import load_pygame
 
 from engine.ui import InterfazEstado
@@ -20,7 +22,7 @@ class CaveScene:
         self.jugador = Jugador()
         self.al_salir = al_salir
         self.primera_entrada = True
-        self.fuente = pygame.font.Font(None, 28)
+        self.fuente = LocalizedFont(None, 28)
         self.mensaje = None
         self.mensaje_hasta = 0
         self.ruta_mapa = os.path.normpath(

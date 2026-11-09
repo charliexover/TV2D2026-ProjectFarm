@@ -3,6 +3,8 @@ import random
 import xml.etree.ElementTree as ET
 
 import pygame
+
+from projectFarm.localization import LocalizedFont, translate
 from pytmx import TiledTileLayer
 from pytmx.util_pygame import load_pygame
 
@@ -73,8 +75,8 @@ class ExpeditionScene:
         self.creditos_hitos_mensaje = 0
         self.primera_entrada = True
         self.al_salir = al_salir
-        self.fuente = pygame.font.Font(None, 28)
-        self.fuente_monitor = pygame.font.Font(None, 18)
+        self.fuente = LocalizedFont(None, 28)
+        self.fuente_monitor = LocalizedFont(None, 18)
 
         ruta_mapa = os.path.normpath(
             os.path.join(
@@ -263,10 +265,9 @@ class ExpeditionScene:
         self.game_state.minerales_recogidos += minerales
         self.game_state.expedicion_activa = None
         self.game_state.dia_finalizacion_expedicion = None
-        resultado = "exitosa" if exitosa else "fallida"
-        self.game_state.resultado_ultima_expedicion = (
-            f"{expedicion['nombre']}: {resultado}. +{tierra} tierra, "
-            f"+{atmosfera} atmósfera, +{minerales} minerales."
+        resultado = translate("exitosa" if exitosa else "fallida")
+        self.game_state.resultado_ultima_expedicion = translate(
+            f"{expedicion['nombre']}: {resultado}. +{tierra} tierra, +{atmosfera} atmósfera, +{minerales} minerales."
         )
 
     def _renderizar_mapa(self, mapa):
@@ -717,9 +718,9 @@ class ExpeditionScene:
         amarillo = (245, 195, 75)
 
         # Fuentes del panel.
-        fuente_titulo = pygame.font.Font(None, 22)
-        fuente_datos = pygame.font.Font(None, 18)
-        fuente_pequena = pygame.font.Font(None, 16)
+        fuente_titulo = LocalizedFont(None, 22)
+        fuente_datos = LocalizedFont(None, 18)
+        fuente_pequena = LocalizedFont(None, 16)
 
         # Panel inferior, separado del monitor principal.
         y = rect_monitor.bottom + 10
@@ -746,7 +747,7 @@ class ExpeditionScene:
 
         # Encabezado.
         encabezado = fuente_titulo.render(
-            "INFORME DE EXPLORACION",
+            "INFORME DE EXPLORACIÓN",
             True,
             azul,
         )
@@ -776,7 +777,7 @@ class ExpeditionScene:
         # --------------------------------------------------
         muestras = (
             ("TIERRA", self.game_state.muestras_tierra),
-            ("ATMOSFERA", self.game_state.muestras_atmosfera),
+            ("ATMÓSFERA", self.game_state.muestras_atmosfera),
             ("MINERALES", self.game_state.minerales_recogidos),
         )
 
@@ -859,8 +860,7 @@ class ExpeditionScene:
 
             color_estado = amarillo
             texto_estado = (
-                f"EN MISION: {expedicion_activa['nombre']} "
-                f"({dias_restantes} dias)"
+                f"EN MISIÓN: {expedicion_activa['nombre']} ({dias_restantes} días)"
             )
 
         pygame.draw.circle(
@@ -939,8 +939,8 @@ class ExpeditionScene:
 
             detalles = (
                 f"{expedicion['nombre']} | "
-                f"{dias_expedicion} dias | "
-                f"{expedicion['coste']} creditos"
+                f"{dias_expedicion} días | "
+                f"{expedicion['coste']} créditos"
             )
 
             recompensa = expedicion["recompensas"]
@@ -952,9 +952,9 @@ class ExpeditionScene:
             )
 
             texto_recompensas = fuente_pequena.render(
-                f"TIERRA +{recompensa[0]}  |  "
-                f"ATMOSFERA +{recompensa[1]}  |  "
-                f"MINERALES +{recompensa[2]}",
+                translate(
+                    f"TIERRA +{recompensa[0]}  |  ATMÓSFERA +{recompensa[1]}  |  MINERALES +{recompensa[2]}"
+                ),
                 True,
                 gris,
             )
@@ -1048,7 +1048,7 @@ class ExpeditionScene:
             1,
         )
 
-        etiqueta = pygame.font.Font(None, 18).render(
+        etiqueta = LocalizedFont(None, 18).render(
             texto,
             True,
             color_texto,
@@ -1244,8 +1244,7 @@ class ExpeditionScene:
 
                 # Información del hito.
                 texto_hito = (
-                    f"{cantidad_actual} / {cantidad_requerida} muestras"
-                    f"    |    Recompensa: {hito['creditos']} créditos"
+                    f"{cantidad_actual} / {cantidad_requerida} muestras    |    Recompensa: {hito['creditos']} créditos"
                 )
 
                 color_texto = (

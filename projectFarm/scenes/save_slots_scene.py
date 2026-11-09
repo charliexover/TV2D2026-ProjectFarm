@@ -2,6 +2,12 @@ import os
 
 import pygame
 
+from projectFarm.localization import (
+    LANGUAGE_SPANISH,
+    LocalizedFont,
+    get_language,
+    toggle_language,
+)
 from projectFarm.save_slots import SaveSlots
 
 MAX_CARACTERES_NOMBRE = 8
@@ -19,9 +25,9 @@ class SaveSlotsScene:
         self.al_seleccionar = al_seleccionar
         self.al_volver = al_volver
 
-        self.fuente_titulo = pygame.font.Font(None, 48)
-        self.fuente = pygame.font.Font(None, 32)
-        self.fuente_detalle = pygame.font.Font(None, 24)
+        self.fuente_titulo = LocalizedFont(None, 48)
+        self.fuente = LocalizedFont(None, 32)
+        self.fuente_detalle = LocalizedFont(None, 24)
         ruta_assets = os.path.join(
             os.path.dirname(__file__), "..", "assets"
         )
@@ -81,13 +87,22 @@ class SaveSlotsScene:
         ]
 
     @staticmethod
+    def obtener_boton_idioma(limites_pantalla):
+        return pygame.Rect(
+            limites_pantalla.right - 200,
+            limites_pantalla.bottom - 62,
+            180,
+            42,
+        )
+
+    @staticmethod
     def _detalle_partida(resumen):
         if resumen["estado"] == "vacia":
-            return "Espacio vacio - iniciar guardado nuevo"
+            return "Espacio vacío - iniciar guardado nuevo"
         if resumen["estado"] == "guardada":
             return (
-                f"Continuar - Dia {resumen['dia']} | "
-                f"Creditos: {resumen['creditos']}"
+                f"Continuar - Día {resumen['dia']} | "
+                f"Créditos: {resumen['creditos']}"
             )
         return "Archivo de guardado no disponible"
 
@@ -233,6 +248,13 @@ class SaveSlotsScene:
                     self.al_volver()
                     return
 
+                boton_idioma = self.obtener_boton_idioma(
+                    limites_pantalla
+                )
+                if boton_idioma.collidepoint(evento.pos):
+                    toggle_language()
+                    return
+
                 for slot, rectangulo in enumerate(
                     self.obtener_rectangulos(limites_pantalla)
                 ):
@@ -262,6 +284,13 @@ class SaveSlotsScene:
         self.dibujar_boton(
             pantalla, self.boton_volver, "Volver"
         )
+        boton_idioma = self.obtener_boton_idioma(limites)
+        texto_idioma = (
+            "Idioma: Español"
+            if get_language() == LANGUAGE_SPANISH
+            else "Lang.: English"
+        )
+        self.dibujar_boton(pantalla, boton_idioma, texto_idioma)
 
         titulo = self.fuente_titulo.render(
             "Selecciona un guardado",
@@ -336,7 +365,7 @@ class SaveSlotsScene:
             )
 
         indicacion = self.fuente_detalle.render(
-            "Haz clic en un guardado o pulsa 1, 2 o 3.",
+            "Haz clic en un guardado.",
             True,
             (230, 230, 230),
         )

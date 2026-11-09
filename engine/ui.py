@@ -1,6 +1,8 @@
 import os
 
 import pygame
+
+from projectFarm.localization import LocalizedFont
 import math
 
 class Inventario:
@@ -29,7 +31,7 @@ class Inventario:
 		self.separacion = separacion
 		self.separacion_grupo = separacion_grupo
 		self.margen_inferior = margen_inferior
-		self.fuente_cantidad = pygame.font.Font(None, 18)
+		self.fuente_cantidad = LocalizedFont(None, 18)
 		self.slot_seleccionado = 0
 		ruta_fondo_inventario = os.path.join(
 			os.path.dirname(__file__),
@@ -277,7 +279,7 @@ class InterfazEstado:
 		self.sprite_estrella_encendida = pygame.transform.scale(
 			pygame.image.load(ruta_estrella_encendida).convert_alpha(), (12, 12)
 		)
-		self.fuente = pygame.font.Font(None, 28)
+		self.fuente = LocalizedFont(None, 28)
 		ruta_zanahoria = os.path.join(
 					os.path.dirname(__file__), "..", "projectFarm", "assets", "zanahoriaIcon.png"
 				)
@@ -399,7 +401,7 @@ class InterfazEstado:
 		recursos = [
 			(
 				self.sprite_creditos,
-				"Créditos acum.",
+				"Créd. acumulados",
 				game_state.creditos_acumulados,
 			),
 			(
@@ -449,7 +451,7 @@ class InterfazEstado:
 			y += 32
 
 		# Instrucción para cerrar
-		ayuda = pygame.font.Font(None, 22).render(
+		ayuda = LocalizedFont(None, 22).render(
 			"Tab: cerrar",
 			True,
 			(200, 200, 200),

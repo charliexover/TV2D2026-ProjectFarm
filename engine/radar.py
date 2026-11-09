@@ -3,6 +3,8 @@ import random
 
 import pygame
 
+from projectFarm.localization import LocalizedFont
+
 
 class Radar:
     ANCHO = 190
@@ -22,8 +24,8 @@ class Radar:
     COLOR_GENERADOR = (255, 105, 95)
 
     def __init__(self):
-        self.fuente = pygame.font.Font(None, 18)
-        self.fuente_titulo = pygame.font.Font(None, 22)
+        self.fuente = LocalizedFont(None, 18)
+        self.fuente_titulo = LocalizedFont(None, 22)
 
     def dibujar(
         self,

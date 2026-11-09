@@ -1,3 +1,4 @@
+from projectFarm.localization import LocalizedFont, translate
 
 CORREOS = [
     {
@@ -6,12 +7,10 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Bienvenido a Marte, {jugador}",
         "mensaje": (
-            "Bienvenido a tu nueva residencia en Marte, "
-            "{jugador}.\n"
-            "Como fue acordado, tu mision es terminar la construccion "
-             "de la base marciana. Al terminarla se te acreditara en tu cuenta personal"
-             " 500mil dolares."
-             "Seguiremos en contacto para informarte de cualquier novedad."
+            "Bienvenido a tu nueva residencia en Marte, {jugador}.\n"
+            "Como acordamos, tu misión es terminar la construcción de la base marciana.\n"
+            "Al terminarla, se acreditarán 500 mil dólares en tu cuenta personal.\n"
+            "Seguiremos en contacto para informarte de cualquier novedad."
         ),
     },
     {
@@ -21,10 +20,10 @@ CORREOS = [
         "asunto": "Sobre {mascota}",
         "mensaje": (
             "Buenos días, {jugador}.\n"
-            "Le recuerdo que {mascota} necesita un tratamiento urgente."
-            "Su enfermedad esta avanzando rapido pero estimo que aun le quedan algunos meses de vida."
-            "El tratamiento es costoso de unos 500 mil dolares.\n\n"
-            "Espero noticias al respecto, saludos cordiales."
+            "Le recuerdo que {mascota} necesita un tratamiento urgente.\n"
+            "Su enfermedad está avanzando rápido, pero estimo que aún le quedan algunos meses de vida.\n"
+            "El tratamiento cuesta alrededor de 500 mil dólares.\n\n"
+            "Espero noticias al respecto. Saludos cordiales."
         ),
     },
     {
@@ -33,9 +32,9 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Tutorial 1",
         "mensaje": (
-            "En tu pocesion tienes una regadera y semillas.\n"
-            "Sal fuera y ve al oeste donde veras un campo donde plantarlas.\n"
-            "El oxigeno es limitado asi que se recomienda no merodear mucho."
+            "En tu posesión tienes una regadera y semillas.\n"
+            "Sal y ve hacia el oeste, donde verás un campo en el que podrás plantarlas.\n"
+            "El oxígeno es limitado, así que se recomienda no merodear demasiado."
         ),
     },
     {
@@ -44,8 +43,8 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Tutorial 2",
         "mensaje": (
-            "Presiona la tecla G para abrir el menu de mejoras.\n"
-            "Si quieres ver la cantidad de recursos que tienes presiona Tab.\n"
+            "Presiona la tecla G para abrir el menú de mejoras.\n"
+            "Si quieres ver la cantidad de recursos que tienes, presiona Tab."
         ),
     },
     {
@@ -54,9 +53,8 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Estrellas",
         "mensaje": (
-            "Cada mision que cumplas agregará estrellas a la interfaz \n"
-            "superior derecha. Al conseguir las 5 podrás irte al este \n"
-            "donde te espera un cohete que te llevará a la Tierra. "
+            "Cada misión que cumplas (construir edificios, reparar generador y acumular 100 mil créditos) agregará estrellas a la interfaz superior derecha.\n"
+            "Al conseguir las 5, podrás irte al este, donde te espera un cohete que te llevará a la Tierra."
         ),
     },
     {
@@ -66,9 +64,9 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Centro de Datos Completado",
         "mensaje": (
-            "Buen trabajo {jugador}.\n"
-            "Has completado el centro de datos exitosamente. \n"
-            "Te has ganado tu estrella del merito sigue asi."
+            "Buen trabajo, {jugador}.\n"
+            "Has completado el centro de datos exitosamente.\n"
+            "Te has ganado tu estrella del mérito. ¡Sigue así!"
         ),
     },
     {
@@ -78,9 +76,9 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Expediciones Completadas",
         "mensaje": (
-            "Buen trabajo {jugador}.\n"
-            "Has completado todas las expediciones. \n"
-            "Te has ganado tu estrella del merito sigue asi."
+            "Buen trabajo, {jugador}.\n"
+            "Has completado todas las expediciones.\n"
+            "Te has ganado tu estrella del mérito. ¡Sigue así!"
         ),
     },
     {
@@ -90,9 +88,9 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Reciclaje Completado",
         "mensaje": (
-            "Buen trabajo {jugador}.\n"
-            "Has construido el centro de reciclaje. \n"
-            "Te has ganado tu estrella del merito sigue asi."
+            "Buen trabajo, {jugador}.\n"
+            "Has construido el centro de reciclaje.\n"
+            "Te has ganado tu estrella del mérito. ¡Sigue así!"
         ),
     },
     {
@@ -102,9 +100,9 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Generador Completado",
         "mensaje": (
-            "Buen trabajo {jugador}.\n"
-            "Has reparado el generador de la base. \n"
-            "Te has ganado tu estrella del merito sigue asi."
+            "Buen trabajo, {jugador}.\n"
+            "Has reparado el generador de la base.\n"
+            "Te has ganado tu estrella del mérito. ¡Sigue así!"
         ),
     },
     {
@@ -114,20 +112,19 @@ CORREOS = [
         "remitente": "Agencia Espacial",
         "asunto": "Créditos Completados",
         "mensaje": (
-            "Buen trabajo {jugador}.\n"
-            "Has conseguido una suma total de 100mil créditos. \n"
-            "Te has ganado tu estrella del merito sigue asi."
+            "Buen trabajo, {jugador}.\n"
+            "Has conseguido una suma total de 100 mil créditos.\n"
+            "Te has ganado tu estrella del mérito. ¡Sigue así!"
         ),
     },
     {
         "id": "mascota_estado1",
         "dia_llegada": 5,
         "remitente": "Señor Smith",
-        "asunto": " {mascota} ",
+        "asunto": "{mascota}",
         "mensaje": (
-            "Buenos dias o noches nosé como será ahi arriba. \n"
-            "{mascota} esta de buen humor hoy, pasaron una noticia sobre usted \n"
-            "en la tele y creo que eso le hizo levantar el animo. \n"
+            "Buenos días o noches; no sé cómo será ahí arriba.\n"
+            "{mascota} está de buen humor hoy. Pasaron una noticia sobre usted en la tele y creo que eso le levantó el ánimo.\n"
             "Saludos cordiales."
         ),
     },
@@ -135,12 +132,12 @@ CORREOS = [
         "id": "mascota_estado2",
         "dia_llegada": 15,
         "remitente": "Señor Smith",
-        "asunto": " {mascota} ",
+        "asunto": "{mascota}",
         "mensaje": (
-            "Buenos dias o noches nosé como será ahi arriba. \n"
-            "El otro dia compré un muñeco de astronauta en una tienda y se lo di a {mascota} \n" 
-            "No se despega de el muñeco y lo abraza todo el tiempo. \n"
-            "Saludos cordiales." 
+            "Buenos días o noches; no sé cómo será ahí arriba.\n"
+            "El otro día compré un muñeco de astronauta en una tienda y se lo di a {mascota}.\n"
+            "No se despega del muñeco y lo abraza todo el tiempo.\n"
+            "Saludos cordiales."
         ),
     },
     {
@@ -149,36 +146,56 @@ CORREOS = [
         "requisito_objetivo": "mateRecolectado",
         "dia_referencia": "dia_recoleccion_mate",
         "remitente": "Desconocido",
-        "asunto": " El mate ",
+        "asunto": "El mate",
         "mensaje": (
-            "Hola {jugador}.\n"
-            "Perdi ese mate en mi primera expedicion no entiendo como "
-            "pudo haber terminado dentro de una cueva. \n"
-            "Que la agencia no se entere de esto por favor, que te parece "
-            "un incentivo asi estaras mas cerca de esos 100mil creditos. Mira tu monitor de recursos :)" 
+            "Hola, {jugador}.\n"
+            "Perdí ese mate en mi primera expedición. No entiendo cómo pudo haber terminado dentro de una cueva.\n"
+            "Que la agencia no se entere de esto, por favor. ¿Qué te parece un incentivo? Así estarás más cerca de esos 100 mil créditos. Mira tu monitor de recursos :)"
         ),
     },
     {
         "id": "tormenta_advertencia",
         "dia_llegada": 7,
         "remitente": "Agencia Espacial",
-        "asunto": " Advertencia de Tormenta ",
+        "asunto": "Advertencia de Tormenta",
         "mensaje": (
-            "Se ha detectado una tormenta de arena en la zona. \n"
-            "Se recomienda no estar mucho tiempo afuera. \n"
-            "Investigaremos una forma de que pueda protegerse. \n"
-            "Por el momento tenga mucho cuidado" 
+            "Se ha detectado una tormenta de arena en la zona.\n"
+            "Se recomienda no estar mucho tiempo afuera.\n"
+            "Investigaremos una forma de que pueda protegerse.\n"
+            "Por el momento, tenga mucho cuidado."
         ),
     },
     {
         "id": "tormenta_advertencia2",
         "dia_llegada": 14,
         "remitente": "Agencia Espacial",
-        "asunto": " Investigacion completada ",
+        "asunto": "Investigación completada",
         "mensaje": (
-            "Tiene a su disposición un nuevo traje anti-tormenta. \n"
-            "Abra el menu de mejoras y desbloquee el traje. \n"
+            "Tiene a su disposición un nuevo traje antitormentas.\n"
+            "Abra el menú de mejoras y desbloquee el traje.\n"
             "Esperemos que le sea útil."
+        ),
+    },
+    {
+        "id": "spam",
+        "dia_llegada": 20,
+        "remitente": "Agencia Espasial",
+        "asunto": "Numero de cuenta",
+        "mensaje": (
+            "Debido a cambios internos en la organización le pedimos \n"
+            "que vuelva a ingresar su número de cuenta y clave en el sistema.\n"
+            "Continue en el siguiente enlace.\n"
+            "Le pedimos disculpas por las molestias ocasionadas"
+        ),
+    },
+    {
+        "id": "primer_mes",
+        "dia_llegada": 30,
+        "remitente": "Agencia Espacial",
+        "asunto": "Un mes en Marte",
+        "mensaje": (
+            "Ya ha pasado un mes desde su llegada a la colonia. \n"
+            "El equipo de la agencia le felicita por su desempeño y le recuerda que aún queda mucho por hacer.\n"
         ),
     },
 ]
@@ -245,16 +262,17 @@ class GestorCorreos:
 
             correo_personalizado = correo.copy()
 
-            correo_personalizado["asunto"] = personalizar_texto(
-                correo["asunto"], self.game_state
+            correo_personalizado["asunto"] = translate(
+                personalizar_texto(correo["asunto"], self.game_state)
             )
 
-            correo_personalizado["mensaje"] = personalizar_texto(
-                correo["mensaje"], self.game_state
+            correo_personalizado["mensaje"] = "\n".join(
+                translate(personalizar_texto(linea, self.game_state))
+                for linea in correo["mensaje"].split("\n")
             )
 
-            correo_personalizado["remitente"] = personalizar_texto(
-                correo["remitente"], self.game_state
+            correo_personalizado["remitente"] = translate(
+                personalizar_texto(correo["remitente"], self.game_state)
             )
 
             correos.append(correo_personalizado)

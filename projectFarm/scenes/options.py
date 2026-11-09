@@ -1,5 +1,7 @@
 import pygame
 
+from projectFarm.localization import LocalizedFont, translate
+
 from engine.audio import establecer_volumen_efectos
 
 
@@ -26,9 +28,9 @@ class OptionsMenu:
 		self.volumen_musica = 10
 		self.volumen_efectos = 10
 		self.solicitar_cierre = False
-		self.fuente_titulo = pygame.font.Font(None, 42)
-		self.fuente = pygame.font.Font(None, 30)
-		self.fuente_pequena = pygame.font.Font(None, 24)
+		self.fuente_titulo = LocalizedFont(None, 42)
+		self.fuente = LocalizedFont(None, 30)
+		self.fuente_pequena = LocalizedFont(None, 24)
 		self._aplicar_volumen()
 
 	def _aplicar_volumen(self):
@@ -410,6 +412,7 @@ class OptionsMenu:
 	def _dibujar_texto_en_lineas(
 		self, pantalla, texto, centro_x, inicio_y, ancho_maximo
 	):
+		texto = translate(texto)
 		lineas = []
 		linea = ""
 		for palabra in texto.split():

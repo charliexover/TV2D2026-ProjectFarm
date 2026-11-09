@@ -3,6 +3,8 @@ from itertools import combinations
 
 import pygame
 
+from projectFarm.localization import LocalizedFont
+
 from engine.audio import reproducir_sonido_pc
 
 
@@ -14,8 +16,8 @@ class Minijuego2:
         self.completado = False
         self.luces = [True] * self.CANTIDAD_LUCES
         self.rectangulos_luces = []
-        self.fuente_titulo = pygame.font.Font(None, 42)
-        self.fuente = pygame.font.Font(None, 26)
+        self.fuente_titulo = LocalizedFont(None, 42)
+        self.fuente = LocalizedFont(None, 26)
         self.mensaje = ""
 
     def iniciar(self):
@@ -124,7 +126,7 @@ class Minijuego2:
         pygame.draw.rect(pantalla, (230, 235, 235), tarjeta, 2)
 
         titulo = self.fuente_titulo.render(
-            "Reparacion de la linea", True, (255, 255, 255)
+            "Reparación de la linea", True, (255, 255, 255)
         )
         pantalla.blit(
             titulo,
@@ -142,7 +144,7 @@ class Minijuego2:
             color = (45, 205, 95) if self.luces[indice] else (70, 75, 82)
             pygame.draw.rect(pantalla, color, rectangulo)
 
-        ayuda = pygame.font.Font(None, 22).render(
+        ayuda = LocalizedFont(None, 22).render(
             "Clic para cambiar luces | Esc: salir", True, (190, 195, 200)
         )
         pantalla.blit(

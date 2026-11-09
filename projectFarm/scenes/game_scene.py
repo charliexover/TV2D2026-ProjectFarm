@@ -4,6 +4,8 @@ import math
 import xml.etree.ElementTree as ET
 
 import pygame
+
+from projectFarm.localization import LocalizedFont, translate
 from pytmx import TiledTileLayer
 from pytmx.util_pygame import load_pygame
 
@@ -186,7 +188,7 @@ class GameScene:
 		self.ultimo_cambio_zona_granja = pygame.time.get_ticks()
 		
 		
-		self.fuente = pygame.font.Font(None, 28)
+		self.fuente = LocalizedFont(None, 28)
 		self.mensaje_antena = None
 		self.mensaje_antena_hasta = 0
 		self.minijuego_antena = Minijuego1()
@@ -876,8 +878,7 @@ class GameScene:
 				self.power_pendiente_confirmacion = None
 				if self.game_state.materiales < self.COSTO_REPARACION_POWER:
 					self._mostrar_mensaje_antena(
-						f"Necesitas {self.COSTO_REPARACION_POWER} materiales "
-						"para reparar esta línea."
+						f"Necesitas {self.COSTO_REPARACION_POWER} materiales para reparar esta línea."
 					)
 					return
 				self.game_state.materiales -= self.COSTO_REPARACION_POWER
@@ -1427,8 +1428,7 @@ class GameScene:
 				and self.game_state.materiales < self.COSTO_REPARACION_POWER
 			):
 				self._mostrar_mensaje_antena(
-					f"Necesitas {self.COSTO_REPARACION_POWER} materiales "
-					"para reparar esta línea."
+					f"Necesitas {self.COSTO_REPARACION_POWER} materiales para reparar esta línea."
 				)
 				return True
 
@@ -1460,7 +1460,7 @@ class GameScene:
 			)
 			if jugador_mapa.colliderect(zona_interaccion):
 				self._mostrar_mensaje_antena(
-					f"Lugar de construccion: {nombre}."
+					f"Lugar de construcción: {nombre}."
 				)
 				reproducir_sonido_interaccion()
 				break
@@ -1914,8 +1914,7 @@ class GameScene:
 					)
 				else:
 					texto_indicacion = (
-						f"E: reparar Línea {indice_power + 1} "
-						f"({self.COSTO_REPARACION_POWER} materiales)"
+						f"E: reparar línea {indice_power + 1} ({self.COSTO_REPARACION_POWER} materiales)"
 					)
 			indicacion = self.fuente.render(
 				texto_indicacion, True, (255, 255, 255)
@@ -1932,7 +1931,8 @@ class GameScene:
 			and pygame.time.get_ticks() < self.mensaje_antena_hasta
 		):
 			lineas = self._envolver_texto_mensaje(
-				self.mensaje_antena, limites_pantalla.width - 240
+				translate(self.mensaje_antena),
+				limites_pantalla.width - 240,
 			)
 			alto = max(80, len(lineas) * self.fuente.get_linesize() + 24)
 			cuadro_mensaje = pygame.Rect(
@@ -2016,8 +2016,7 @@ class GameScene:
 		if indice_power is None:
 			raise RuntimeError("No hay un Power pendiente de confirmación.")
 		texto = self.fuente.render(
-			f"¿Usar {self.COSTO_REPARACION_POWER} materiales para reparar "
-			f"Línea {indice_power + 1}?",
+			f"¿Usar {self.COSTO_REPARACION_POWER} materiales para reparar Línea {indice_power + 1}?",
 			True,
 			(255, 255, 255),
 		)
@@ -2025,7 +2024,7 @@ class GameScene:
 			texto,
 			texto.get_rect(center=(ventana.centerx, ventana.centery - 12)),
 		)
-		ayuda = pygame.font.Font(None, 22).render(
+		ayuda = LocalizedFont(None, 22).render(
 			"E: confirmar | Esc: cancelar", True, (200, 200, 200)
 		)
 		pantalla.blit(
@@ -2071,7 +2070,7 @@ class GameScene:
 			)
 
 		estado = (
-			"Completado."
+			"Completado"
 			if progreso == 100
 			else f"Energía: {progreso}%"
 		)
@@ -2080,8 +2079,8 @@ class GameScene:
 			texto_estado,
 			texto_estado.get_rect(midtop=(ventana.centerx, ventana.top + 108)),
 		)
-		ayuda = pygame.font.Font(None, 22).render(
-			"E o Esc: cerrar", True, (200, 200, 200)
+		ayuda = LocalizedFont(None, 22).render(
+			"Esc: cerrar", True, (200, 200, 200)
 		)
 		pantalla.blit(
 			ayuda,
@@ -2123,7 +2122,7 @@ class GameScene:
 		pantalla.blit(capa_negra, (0, 0))
 		if inicio_dia_siguiente <= tiempo_transcurrido < duracion_total:
 			texto_dia = self.fuente.render(
-				f"DIA {self.game_state.dia_actual}", True, (255, 255, 255)
+				f"DÍA {self.game_state.dia_actual}", True, (255, 255, 255)
 			)
 			if tiempo_transcurrido >= inicio_fundido_entrada:
 				texto_dia.set_alpha(opacidad)
