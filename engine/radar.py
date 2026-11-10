@@ -3,7 +3,7 @@ import random
 
 import pygame
 
-from projectFarm.localization import LocalizedFont
+from projectFarm.localization import LocalizedFont, translate
 
 
 class Radar:
@@ -190,13 +190,13 @@ class Radar:
 
     def _dibujar_leyenda(self, panel):
         elementos = (
-            ("Edif.", self.COLOR_EDIFICIO, (8, 113)),
-            ("Chatarra", self.COLOR_CHATARRA, (76, 113)),
-            ("Cultivo", self.COLOR_CULTIVO, (8, 132)),
-            ("Cosechable", self.COLOR_COSECHABLE, (76, 132)),
-            ("Antena", self.COLOR_ANTENA, (8, 151)),
-            ("Generador", self.COLOR_GENERADOR, (76, 151)),
-            ("Jugador", self.COLOR_JUGADOR, (8, 170)),
+            (translate("Edif."), self.COLOR_EDIFICIO, (8, 113)),
+            (translate("Chatarra"), self.COLOR_CHATARRA, (76, 113)),
+            (translate("Cultivo"), self.COLOR_CULTIVO, (8, 132)),
+            (translate("Cosechable"), self.COLOR_COSECHABLE, (76, 132)),
+            (translate("Antena"), self.COLOR_ANTENA, (8, 151)),
+            (translate("Generador"), self.COLOR_GENERADOR, (76, 151)),
+            (translate("Jugador"), self.COLOR_JUGADOR, (8, 170)),
         )
         for etiqueta, color, (x, y) in elementos:
             pygame.draw.rect(panel, color, (x + 1, y + 3, 6, 6))
