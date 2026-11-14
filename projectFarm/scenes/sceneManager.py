@@ -24,10 +24,13 @@ import random
 
 
 class SceneManager:
-    def __init__(self):
+    def __init__(self, al_cambiar_resolucion, resoluciones, al_alternar_pantalla_completa, text_renderer=None):
         self.escenas = {}
         self.escena_actual = None
         self.musica_exterior_cargada = False
+        self.al_cambiar_resolucion = al_cambiar_resolucion
+        self.al_alternar_pantalla_completa = al_alternar_pantalla_completa
+        self.text_renderer = text_renderer
         self.tipo_musica_actual = None
         self.ruta_musica_exterior = os.path.join(
             os.path.dirname(__file__), "..", "sounds", "OneDayInMars.wav"
@@ -75,6 +78,9 @@ class SceneManager:
             self.save_slots,
             self.iniciar_partida,
             self.cambiar_a_titulo,
+            al_cambiar_resolucion,
+            resoluciones,
+            al_alternar_pantalla_completa,
         )
         self.dataCenter = DataCenterScene(self.game_state, self.inventario, self.cambiar_a_granja)  
         self.expedicion = ExpeditionScene(
@@ -82,6 +88,37 @@ class SceneManager:
         )
         self.menu_habilidades_edificios = SkillTreeMenu()
         self.menu_opciones = OptionsMenu()
+                # Compartir el renderizador con todas las escenas y componentes.
+        componentes = (
+            self.granja,
+            self.cueva,
+            self.casa,
+            self.reciclaje,
+            self.titulo,
+            self.selector_partidas,
+            self.dataCenter,
+            self.expedicion,
+            self.menu_habilidades_edificios,
+            self.menu_opciones,
+            self.inventario,
+        )
+
+        for componente in componentes:
+            componente.text_renderer = self.text_renderer
+
+        self.granja.menu_habilidades.text_renderer = self.text_renderer
+        self.granja.radar.text_renderer = self.text_renderer
+        # Las interfaces de estado también dibujan textos.
+        for escena in (
+            self.granja,
+            self.cueva,
+            self.casa,
+            self.reciclaje,
+            self.dataCenter,
+            self.expedicion,
+        ):
+            if hasattr(escena, "interfaz_estado"):
+                escena.interfaz_estado.text_renderer = self.text_renderer
         self.solicitar_cierre = False
         self.registrar_escena("granja", self.granja, inicial=False)
         self.registrar_escena("casa", self.casa, inicial=False)
@@ -115,6 +152,18 @@ class SceneManager:
 
         self.escena_actual = escena
         self._actualizar_musica(escena)
+
+    def dibujar_transicion_sueno(self, pantalla, escala, desplazamiento):
+        if self.escena_actual is self.casa:
+            self.casa.dibujar_transicion_sueno(
+                pantalla, escala, desplazamiento
+            )
+
+    def dibujar_transicion_desmayo(self, pantalla, escala, desplazamiento):
+        if self.escena_actual is self.granja:
+            self.granja._dibujar_transicion_desmayo(
+                pantalla, escala, desplazamiento
+            )
 
     def _actualizar_musica(self, escena):
         if escena is self.titulo:
@@ -166,8 +215,11 @@ class SceneManager:
             self.game_state,
             al_volver_titulo=self.cambiar_a_titulo,
         )
+        self.ending.text_renderer = self.text_renderer
         self.registrar_escena("ending", self.ending)
         self.cambiar_escena("ending")
+        
+        self.ending.text_renderer = self.text_renderer
 
     def salir_de_cueva(self):
         self.granja.primera_entrada = True

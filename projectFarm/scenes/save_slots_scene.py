@@ -2,6 +2,7 @@ import os
 
 import pygame
 
+from engine.input import obtener_posicion_mouse
 from projectFarm.localization import (
     LANGUAGE_SPANISH,
     LocalizedFont,
@@ -20,11 +21,17 @@ class SaveSlotsScene:
         (0.75, 0.43),
     )
 
-    def __init__(self, save_slots, al_seleccionar, al_volver):
+    def __init__(self, save_slots, al_seleccionar, al_volver, al_cambiar_resolucion,
+    resoluciones, al_alternar_pantalla_completa):
         self.save_slots = save_slots
         self.al_seleccionar = al_seleccionar
         self.al_volver = al_volver
-
+        self.al_cambiar_resolucion = al_cambiar_resolucion
+        self.resoluciones = resoluciones
+        self.al_alternar_pantalla_completa = al_alternar_pantalla_completa
+        self.pantalla_completa = False
+        self.text_renderer = None
+        self.fuente_resolucion = LocalizedFont(None, 22)
         self.fuente_titulo = LocalizedFont(None, 48)
         self.fuente = LocalizedFont(None, 32)
         self.fuente_detalle = LocalizedFont(None, 24)
@@ -91,6 +98,24 @@ class SaveSlotsScene:
         return pygame.Rect(
             limites_pantalla.right - 200,
             limites_pantalla.bottom - 62,
+            180,
+            42,
+        )
+
+    @staticmethod
+    def obtener_boton_resolucion(limites_pantalla):
+        return pygame.Rect(
+            limites_pantalla.right - 200,
+            limites_pantalla.bottom - 112,
+            180,
+            42,
+        )
+
+    @staticmethod
+    def obtener_boton_pantalla_completa(limites_pantalla):
+        return pygame.Rect(
+            limites_pantalla.right - 200,
+            limites_pantalla.bottom - 162,
             180,
             42,
         )
@@ -247,10 +272,38 @@ class SaveSlotsScene:
                 if self.boton_volver.collidepoint(evento.pos):
                     self.al_volver()
                     return
+                
+                boton_pantalla_completa = self.obtener_boton_pantalla_completa(
+                    limites_pantalla
+                )
+
+                if boton_pantalla_completa.collidepoint(evento.pos):
+                    self.pantalla_completa = self.al_alternar_pantalla_completa()
+                    return
+                
+                boton_resolucion = self.obtener_boton_resolucion(
+                    limites_pantalla
+                )
+
+                if boton_resolucion.collidepoint(evento.pos):
+                    resolucion_actual = pygame.display.get_window_size()
+
+                    if resolucion_actual in self.resoluciones:
+                        indice = self.resoluciones.index(resolucion_actual)
+                    else:
+                        indice = -1
+
+                    siguiente = (indice + 1) % len(self.resoluciones)
+
+                    self.al_cambiar_resolucion(
+                        self.resoluciones[siguiente]
+                    )
+                    return
 
                 boton_idioma = self.obtener_boton_idioma(
                     limites_pantalla
                 )
+
                 if boton_idioma.collidepoint(evento.pos):
                     toggle_language()
                     return
@@ -266,12 +319,13 @@ class SaveSlotsScene:
         pygame.draw.rect(pantalla, (35, 35, 35), rectangulo)
         pygame.draw.rect(pantalla, (220, 220, 220), rectangulo, 2)
 
-        superficie = self.fuente.render(
-            texto, True, (255, 255, 255)
-        )
-        pantalla.blit(
-            superficie,
-            superficie.get_rect(center=rectangulo.center),
+        self.text_renderer.dibujar_texto(
+            self.fuente,
+            texto,
+            True,
+            (255, 255, 255),
+            rectangulo.center,
+            ancla="center",
         )
 
     def draw(self, pantalla):
@@ -290,101 +344,178 @@ class SaveSlotsScene:
             if get_language() == LANGUAGE_SPANISH
             else "Lang.: English"
         )
+
+        if self.paso_creacion == 0:
+            boton_pantalla_completa = self.obtener_boton_pantalla_completa(
+                limites
+            )
+
+            texto_pantalla_completa = (
+                "Pantalla completa: Sí"
+                if self.pantalla_completa
+                else "Pantalla completa: No"
+            )
+
+            color = (
+                (75, 75, 75)
+                if boton_pantalla_completa.collidepoint(obtener_posicion_mouse())
+                else (35, 35, 35)
+            )
+
+            pygame.draw.rect(
+                pantalla,
+                color,
+                boton_pantalla_completa,
+            )
+            pygame.draw.rect(
+                pantalla,
+                (220, 220, 220),
+                boton_pantalla_completa,
+                2,
+            )
+
+            self.text_renderer.dibujar_texto(
+                self.fuente_resolucion,
+                texto_pantalla_completa,
+                True,
+                (255, 255, 255),
+                boton_pantalla_completa.center,
+                ancla="center",
+            )
+
         self.dibujar_boton(pantalla, boton_idioma, texto_idioma)
 
-        titulo = self.fuente_titulo.render(
+        if self.paso_creacion == 0:
+            boton_resolucion = self.obtener_boton_resolucion(limites)
+
+            resolucion_actual = pygame.display.get_surface().get_size()
+            texto_resolucion = (
+                f"Resolución: {resolucion_actual[0]}x{resolucion_actual[1]}"
+            )
+
+            posicion_mouse = obtener_posicion_mouse()
+
+            color = (
+                (75, 75, 75)
+                if boton_resolucion.collidepoint(posicion_mouse)
+                else (35, 35, 35)
+            )
+
+            pygame.draw.rect(
+                pantalla,
+                color,
+                boton_resolucion,
+            )
+            pygame.draw.rect(
+                pantalla,
+                (220, 220, 220),
+                boton_resolucion,
+                2,
+            )
+
+            self.text_renderer.dibujar_texto(
+                self.fuente_resolucion,
+                texto_resolucion,
+                True,
+                (255, 255, 255),
+                boton_resolucion.center,
+                ancla="center",
+            )
+
+        self.text_renderer.dibujar_texto(
+            self.fuente_titulo,
             "Selecciona un guardado",
             True,
             (255, 255, 255),
-        )
-        pantalla.blit(
-            titulo,
-            titulo.get_rect(midtop=(limites.centerx, 45)),
+            (limites.centerx, 45),
+            ancla="midtop",
         )
 
         resumenes = self.save_slots.resumenes()
         rectangulos_guardados = self.obtener_rectangulos(limites)
-        posicion_mouse = pygame.mouse.get_pos()
+        posicion_mouse = obtener_posicion_mouse()
         indice_hover = None
-        for indice, (rectangulo, resumen) in enumerate(
-            zip(rectangulos_guardados, resumenes),
-            start=1,
-        ):
-            esta_encima = rectangulo.collidepoint(posicion_mouse)
-            if esta_encima:
-                indice_hover = indice - 1
-            sprite = (
-                self.sprite_guardado_hover
-                if esta_encima
-                else self.sprite_guardado
-            )
-            tamano_sprite = (
-                max(48, round(limites.height * 0.1)),
-                max(48, round(limites.height * 0.1)),
-            )
-            sprite = pygame.transform.scale(sprite, tamano_sprite)
-            pantalla.blit(
-                sprite, sprite.get_rect(center=rectangulo.center)
-            )
-            titulo_slot = self.fuente.render(
-                self._nombre_guardado(resumen, indice),
-                True,
-                (255, 255, 255),
-            )
-            pantalla.blit(
-                titulo_slot,
-                titulo_slot.get_rect(
-                    midtop=(rectangulo.centerx, rectangulo.bottom + 8)
-                ),
-            )
+        if self.paso_creacion == 0:
+            for indice, (rectangulo, resumen) in enumerate(
+                zip(rectangulos_guardados, resumenes),
+                start=1,
+            ):
+                esta_encima = rectangulo.collidepoint(posicion_mouse)
+                if esta_encima:
+                    indice_hover = indice - 1
+
+                sprite = (
+                    self.sprite_guardado_hover
+                    if esta_encima
+                    else self.sprite_guardado
+                )
+
+                tamano_sprite = (
+                    max(48, round(limites.height * 0.1)),
+                    max(48, round(limites.height * 0.1)),
+                )
+                sprite = pygame.transform.scale(sprite, tamano_sprite)
+
+                pantalla.blit(
+                    sprite, sprite.get_rect(center=rectangulo.center)
+                )
+
+                self.text_renderer.dibujar_texto(
+                    self.fuente,
+                    self._nombre_guardado(resumen, indice),
+                    True,
+                    (255, 255, 255),
+                    (rectangulo.centerx, rectangulo.bottom + 8),
+                    ancla="midtop",
+                )
 
         if indice_hover is not None:
             resumen = resumenes[indice_hover]
-            titulo = self.fuente.render(
-                self._nombre_guardado(resumen, indice_hover + 1),
-                True,
-                (255, 255, 255),
-            )
-            detalle = self.fuente_detalle.render(
-                self._detalle_partida(resumen), True, (220, 220, 220)
-            )
+
             panel = pygame.Rect(
                 0, 0, min(520, limites.width - 32), 66
             )
             panel.center = (limites.centerx, limites.height - 132)
+
             fondo_panel = pygame.Surface(panel.size, pygame.SRCALPHA)
             fondo_panel.fill((0, 0, 0, 190))
             pantalla.blit(fondo_panel, panel)
-            pantalla.blit(
-                titulo,
-                titulo.get_rect(midtop=(panel.centerx, panel.top + 7)),
-            )
-            pantalla.blit(
-                detalle,
-                detalle.get_rect(midbottom=(panel.centerx, panel.bottom - 6)),
+
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                self._nombre_guardado(resumen, indice_hover + 1),
+                True,
+                (255, 255, 255),
+                (panel.centerx, panel.top + 7),
+                ancla="midtop",
             )
 
-        indicacion = self.fuente_detalle.render(
+            self.text_renderer.dibujar_texto(
+                self.fuente_detalle,
+                self._detalle_partida(resumen),
+                True,
+                (220, 220, 220),
+                (panel.centerx, panel.bottom - 6),
+                ancla="midbottom",
+            )
+
+        self.text_renderer.dibujar_texto(
+            self.fuente_detalle,
             "Haz clic en un guardado.",
             True,
             (230, 230, 230),
-        )
-        pantalla.blit(
-            indicacion,
-            indicacion.get_rect(
-                midbottom=(limites.centerx, limites.bottom - 14)
-            ),
+            (limites.centerx, limites.bottom - 14),
+            ancla="midbottom",
         )
 
         if self.mensaje and self.paso_creacion == 0:
-            mensaje = self.fuente_detalle.render(
-                self.mensaje, True, (255, 170, 130)
-            )
-            pantalla.blit(
-                mensaje,
-                mensaje.get_rect(
-                    midbottom=(limites.centerx, limites.bottom - 52)
-                ),
+            self.text_renderer.dibujar_texto(
+                self.fuente_detalle,
+                self.mensaje,
+                True,
+                (255, 170, 130),
+                (limites.centerx, limites.bottom - 52),
+                ancla="midbottom",
             )
 
         if self.paso_creacion:
@@ -413,14 +544,13 @@ class SaveSlotsScene:
                 titulo_texto = "Nombre de tu mascota"
                 valor = self.nombre_mascota
 
-            superficie_titulo = self.fuente_titulo.render(
-                titulo_texto, True, (255, 255, 255)
-            )
-            pantalla.blit(
-                superficie_titulo,
-                superficie_titulo.get_rect(
-                    midtop=(panel.centerx, panel.top + 20)
-                )
+            self.text_renderer.dibujar_texto(
+                self.fuente_titulo,
+                titulo_texto,
+                True,
+                (255, 255, 255),
+                (panel.centerx, panel.top + 20),
+                ancla="midtop",
             )
 
             if self.paso_creacion in (1, 3):
@@ -438,41 +568,31 @@ class SaveSlotsScene:
                     self.rect_nombre, 2
                 )
 
-                superficie_nombre = self.fuente.render(
-                    valor, True, (255, 255, 255)
+                self.text_renderer.dibujar_texto(
+                    self.fuente,
+                    valor,
+                    True,
+                    (255, 255, 255),
+                    (self.rect_nombre.left + 10, self.rect_nombre.top + 8),
+                    ancla="topleft",
                 )
-                pantalla.blit(
-                    superficie_nombre,
-                    (
-                        self.rect_nombre.left + 10,
-                        self.rect_nombre.top + 8,
-                    ),
-                )
-                contador = self.fuente_detalle.render(
+                self.text_renderer.dibujar_texto(
+                    self.fuente_detalle,
                     f"{len(valor)}/{MAX_CARACTERES_NOMBRE}",
                     True,
                     (200, 200, 200),
-                )
-
-                pantalla.blit(
-                    contador,
-                    contador.get_rect(
-                        midright=(
-                            self.rect_nombre.right,
-                            self.rect_nombre.bottom + 18,
-                        )
-                    ),
+                    (self.rect_nombre.right, self.rect_nombre.bottom + 18),
+                    ancla="midright",
                 )
 
                 ayuda = "Enter: continuar | Escape: cancelar"
-                superficie_ayuda = self.fuente_detalle.render(
-                    ayuda, True, (200, 200, 200)
-                )
-                pantalla.blit(
-                    superficie_ayuda,
-                    superficie_ayuda.get_rect(
-                        center=(panel.centerx, panel.bottom - 25)
-                    ),
+                self.text_renderer.dibujar_texto(
+                    self.fuente_detalle,
+                    ayuda,
+                    True,
+                    (200, 200, 200),
+                    (panel.centerx, panel.bottom - 25),
+                    ancla="center",
                 )
 
             elif self.paso_creacion == 2:
@@ -488,7 +608,7 @@ class SaveSlotsScene:
                     170,
                     150,
                 )
-                posicion_mouse = pygame.mouse.get_pos()
+                posicion_mouse = obtener_posicion_mouse()
                 for rectangulo, sprite, etiqueta in (
                     (self.boton_perro, self.sprite_perro, "Perro"),
                     (self.boton_gato, self.sprite_gato, "Gato"),
@@ -508,34 +628,31 @@ class SaveSlotsScene:
                             center=(rectangulo.centerx, rectangulo.top + 58)
                         ),
                     )
-                    texto_mascota = self.fuente.render(
-                        etiqueta, True, (255, 255, 255)
-                    )
-                    pantalla.blit(
-                        texto_mascota,
-                        texto_mascota.get_rect(
-                            center=(rectangulo.centerx, rectangulo.bottom - 20)
-                        ),
+                    self.text_renderer.dibujar_texto(
+                        self.fuente,
+                        etiqueta,
+                        True,
+                        (255, 255, 255),
+                        (rectangulo.centerx, rectangulo.bottom - 20),
+                        ancla="center",
                     )
 
                 ayuda = "Haz clic en una imagen o pulsa 1/2"
-                superficie_ayuda = self.fuente_detalle.render(
-                    ayuda, True, (200, 200, 200)
-                )
-                pantalla.blit(
-                    superficie_ayuda,
-                    superficie_ayuda.get_rect(
-                        center=(panel.centerx, panel.bottom - 25)
-                    ),
+                self.text_renderer.dibujar_texto(
+                    self.fuente_detalle,
+                    ayuda,
+                    True,
+                    (200, 200, 200),
+                    (panel.centerx, panel.bottom - 25),
+                    ancla="center",
                 )
 
             if self.mensaje:
-                error = self.fuente_detalle.render(
-                    self.mensaje, True, (255, 170, 130)
-                )
-                pantalla.blit(
-                    error,
-                    error.get_rect(
-                        center=(panel.centerx, panel.bottom - 5)
-                    ),
+                self.text_renderer.dibujar_texto(
+                    self.fuente_detalle,
+                    self.mensaje,
+                    True,
+                    (255, 170, 130),
+                    (panel.centerx, panel.bottom - 5),
+                    ancla="center",
                 )

@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 import pygame
 
+from engine.input import obtener_posicion_mouse
 from projectFarm.localization import LocalizedFont, translate
 from pytmx import TiledTileLayer
 from pytmx.util_pygame import load_pygame
@@ -189,6 +190,8 @@ class GameScene:
 		
 		
 		self.fuente = LocalizedFont(None, 28)
+		self.fuente_ayuda = LocalizedFont(None, 22)
+		self.text_renderer = None
 		self.mensaje_antena = None
 		self.mensaje_antena_hasta = 0
 		self.minijuego_antena = Minijuego1()
@@ -819,6 +822,12 @@ class GameScene:
 			for pieza in self.chatarra
 		)
 
+	def _actualizar_opacidad_hotbar(self):
+		self.inventario.oscurecer_hotbar = (
+			self.transicion_desmayo_inicio is not None
+			or self.transicion_ending_inicio is not None
+		)
+
 	def _colisiona_con_edificios(self, rectangulo):
 		rectangulo_mapa = self.camera.to_map(rectangulo)
 		colisiones = []
@@ -933,10 +942,11 @@ class GameScene:
 				self.ventana_generador_abierta = False
 			return
 
-		if self.menu_habilidades.procesar_eventos(
-			eventos, limites_pantalla, self.game_state
-		):
-			return
+		if not self.interfaz_estado.mostrar_inventario:
+			if self.menu_habilidades.procesar_eventos(
+				eventos, limites_pantalla, self.game_state
+			):
+				return
 
 		for evento in eventos:
 					if evento.type == pygame.KEYDOWN and evento.key == pygame.K_TAB:
@@ -1336,7 +1346,7 @@ class GameScene:
 				)
 		if presiono_interactuar:
 			self._mostrar_mensaje_antena(
-				"Esta parte del muro no parece muy solido"
+				"Esta parte del muro no parece muy sólida."
 			)
 			return True
 		if not clic_entrada:
@@ -1487,7 +1497,7 @@ class GameScene:
 			self.tipo_cursor_guante = None
 
 	def _actualizar_cursor_guante(self):
-		posicion_mundo = self.camera.to_world(pygame.mouse.get_pos())
+		posicion_mundo = self.camera.to_world(obtener_posicion_mouse())
 		sobre_parcela_al_alcance = (
 			self.obtener_parcela_jugador(self.jugador, posicion_mundo)
 			is not None
@@ -1802,6 +1812,7 @@ class GameScene:
 			mostrar_materiales=True,
 			dentro_zona_segura=dentro_zona_segura,
 		)
+		self.inventario.oscurecer_hotbar = self.menu_habilidades.abierto
 		self.inventario.dibujar(pantalla, self.game_state)
 		edificios_radar = [
 			self.puerta_casa_mapa,
@@ -1851,14 +1862,13 @@ class GameScene:
 				self.jugador.rectangulo.height + 24,
 			)
 			if jugador_mapa.colliderect(zona_interaccion):
-				indicacion = self.fuente.render(
+				self.text_renderer.dibujar_texto(
+					self.fuente,
 					f"E: lugar de construcción de {nombre}",
 					True,
 					(255, 255, 255),
-				)
-				pantalla.blit(
-					indicacion,
-					indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
+					(pantalla.get_width() // 2, 20),
+					ancla="midtop",
 				)
 				break
 		
@@ -1866,14 +1876,13 @@ class GameScene:
 			zona_interaccion = pygame.Rect(x - 32, y - 32, 64, 64)
 			jugador_mapa = self.camera.to_map(self.jugador.rectangulo)
 			if jugador_mapa.colliderect(zona_interaccion):
-				indicacion = self.fuente.render(
+				self.text_renderer.dibujar_texto(
+					self.fuente,
 					f"E: interactuar con antena {nombre}",
 					True,
 					(255, 255, 255),
-				)
-				pantalla.blit(
-					indicacion,
-					indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
+					(pantalla.get_width() // 2, 20),
+					ancla="midtop",
 				)
 				break
 		x, y = self.entrada_cueva_mapa
@@ -1882,18 +1891,15 @@ class GameScene:
 			texto_cueva = (
 				"Entra en la cueva"
 				if self.game_state.cuevaAbierta
-				else "Clic con martillo o E: revisar el muro"
+				else "E: revisar el muro"
 			)
-			indicacion = self.fuente.render(
+			self.text_renderer.dibujar_texto(
+				self.fuente,
 				texto_cueva,
 				True,
 				(255, 255, 255),
-			)
-			pantalla.blit(
-				indicacion,
-				indicacion.get_rect(
-					midtop=(pantalla.get_width() // 2, 20)
-				),
+				(pantalla.get_width() // 2, 20),
+				ancla="midtop",
 			)
 		for nombre, (x, y) in self.energia_mapa.items():
 			zona_interaccion = pygame.Rect(x - 32, y - 32, 64, 64)
@@ -1916,14 +1922,13 @@ class GameScene:
 					texto_indicacion = (
 						f"E: reparar línea {indice_power + 1} ({self.COSTO_REPARACION_POWER} materiales)"
 					)
-			indicacion = self.fuente.render(
-				texto_indicacion, True, (255, 255, 255)
-			)
-			pantalla.blit(
-				indicacion,
-				indicacion.get_rect(
-					midtop=(pantalla.get_width() // 2, 20)
-				),
+			self.text_renderer.dibujar_texto(
+				self.fuente,
+				texto_indicacion,
+				True,
+				(255, 255, 255),
+				(pantalla.get_width() // 2, 20),
+				ancla="midtop",
 			)
 			break
 		if (
@@ -1931,7 +1936,7 @@ class GameScene:
 			and pygame.time.get_ticks() < self.mensaje_antena_hasta
 		):
 			lineas = self._envolver_texto_mensaje(
-				translate(self.mensaje_antena),
+				self.mensaje_antena,
 				limites_pantalla.width - 240,
 			)
 			alto = max(80, len(lineas) * self.fuente.get_linesize() + 24)
@@ -1942,9 +1947,11 @@ class GameScene:
 			pygame.draw.rect(pantalla, (0, 0, 0), cuadro_mensaje)
 			pygame.draw.rect(pantalla, (255, 255, 255), cuadro_mensaje, 2)
 			for indice, linea in enumerate(lineas):
-				mensaje = self.fuente.render(linea, True, (255, 255, 255))
-				pantalla.blit(
-					mensaje,
+				self.text_renderer.dibujar_texto(
+					self.fuente,
+					linea,
+					True,
+					(255, 255, 255),
 					(
 						cuadro_mensaje.left + 20,
 						cuadro_mensaje.top + 12
@@ -1957,7 +1964,6 @@ class GameScene:
 			self._dibujar_ventana_generador(pantalla)
 		if self.power_pendiente_confirmacion is not None:
 			self._dibujar_confirmacion_power(pantalla)
-		self._dibujar_transicion_desmayo(pantalla)
 		self._dibujar_transicion_ending(pantalla)
 		self._actualizar_cursor_guante()
 
@@ -2015,21 +2021,21 @@ class GameScene:
 		indice_power = self.power_pendiente_confirmacion
 		if indice_power is None:
 			raise RuntimeError("No hay un Power pendiente de confirmación.")
-		texto = self.fuente.render(
+		self.text_renderer.dibujar_texto(
+			self.fuente,
 			f"¿Usar {self.COSTO_REPARACION_POWER} materiales para reparar Línea {indice_power + 1}?",
 			True,
 			(255, 255, 255),
+			(ventana.centerx, ventana.centery - 12),
+			ancla="center",
 		)
-		pantalla.blit(
-			texto,
-			texto.get_rect(center=(ventana.centerx, ventana.centery - 12)),
-		)
-		ayuda = LocalizedFont(None, 22).render(
-			"E: confirmar | Esc: cancelar", True, (200, 200, 200)
-		)
-		pantalla.blit(
-			ayuda,
-			ayuda.get_rect(center=(ventana.centerx, ventana.centery + 34)),
+		self.text_renderer.dibujar_texto(
+			self.fuente_ayuda,
+			"E: confirmar | Esc: cancelar",
+			True,
+			(200, 200, 200),
+			(ventana.centerx, ventana.centery + 34),
+			ancla="center",
 		)
 
 	def _dibujar_ventana_generador(self, pantalla):
@@ -2043,10 +2049,13 @@ class GameScene:
 		pygame.draw.rect(pantalla, (20, 25, 28), ventana)
 		pygame.draw.rect(pantalla, (220, 230, 225), ventana, 2)
 
-		titulo = self.fuente.render("GENERADOR", True, (255, 255, 255))
-		pantalla.blit(
-			titulo,
-			titulo.get_rect(midtop=(ventana.centerx, ventana.top + 18)),
+		self.text_renderer.dibujar_texto(
+			self.fuente,
+			"GENERADOR",
+			True,
+			(255, 255, 255),
+			(ventana.centerx, ventana.top + 18),
+			ancla="midtop",
 		)
 
 		progreso = self._obtener_progreso_energia()
@@ -2074,20 +2083,24 @@ class GameScene:
 			if progreso == 100
 			else f"Energía: {progreso}%"
 		)
-		texto_estado = self.fuente.render(estado, True, (255, 255, 255))
-		pantalla.blit(
-			texto_estado,
-			texto_estado.get_rect(midtop=(ventana.centerx, ventana.top + 108)),
+		self.text_renderer.dibujar_texto(
+			self.fuente,
+			estado,
+			True,
+			(255, 255, 255),
+			(ventana.centerx, ventana.top + 108),
+			ancla="midtop",
 		)
-		ayuda = LocalizedFont(None, 22).render(
-			"Esc: cerrar", True, (200, 200, 200)
-		)
-		pantalla.blit(
-			ayuda,
-			ayuda.get_rect(midbottom=(ventana.centerx, ventana.bottom - 8)),
+		self.text_renderer.dibujar_texto(
+			self.fuente_ayuda,
+			"Esc: cerrar",
+			True,
+			(200, 200, 200),
+			(ventana.centerx, ventana.bottom - 8),
+			ancla="midbottom",
 		)
 
-	def _dibujar_transicion_desmayo(self, pantalla):
+	def _dibujar_transicion_desmayo(self, pantalla, escala, desplazamiento):
 		inicio = self.transicion_desmayo_inicio
 		if inicio is None:
 			return
@@ -2099,6 +2112,7 @@ class GameScene:
 			inicio_dia_siguiente + self.DURACION_CARTEL_DIA_SUENO
 		)
 		duracion_total = inicio_fundido_entrada + self.DURACION_FUNDIDO_SUENO
+
 		if tiempo_transcurrido < inicio_fundido:
 			return
 
@@ -2119,14 +2133,23 @@ class GameScene:
 
 		capa_negra = pygame.Surface(pantalla.get_size(), pygame.SRCALPHA)
 		capa_negra.fill((0, 0, 0, opacidad))
-		pantalla.blit(capa_negra, (0, 0))
+		pantalla.blit(capa_negra, desplazamiento)
+
 		if inicio_dia_siguiente <= tiempo_transcurrido < duracion_total:
-			texto_dia = self.fuente.render(
-				f"DÍA {self.game_state.dia_actual}", True, (255, 255, 255)
+			texto_dia = self.fuente.render_scaled(
+				f"DÍA {self.game_state.dia_actual}",
+				escala,
+				True,
+				(255, 255, 255),
 			)
+
 			if tiempo_transcurrido >= inicio_fundido_entrada:
 				texto_dia.set_alpha(opacidad)
-			pantalla.blit(
-				texto_dia,
-				texto_dia.get_rect(center=pantalla.get_rect().center),
+
+			rect = texto_dia.get_rect(
+				center=(
+					desplazamiento[0] + round(400 * escala),
+					desplazamiento[1] + round(300 * escala),
+				)
 			)
+			pantalla.blit(texto_dia, rect)

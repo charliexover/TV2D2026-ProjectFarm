@@ -5,7 +5,7 @@ import pygame
 
 from projectFarm.localization import LocalizedFont
 
-from engine.audio import reproducir_sonido_tomar_chatarra
+from engine.audio import reproducir_musica_reciclaje, reproducir_sonido_tomar_chatarra
 from engine.spritesheet import Spritesheet
 from engine.ui import InterfazEstado
 from projectFarm.entities import Jugador
@@ -15,6 +15,7 @@ class RecycleScene:
     def __init__(self, game_state, inventario, al_salir_casa):
         self.name = "Recycle Scene"
         self.game_state = game_state
+        self.musica_iniciada = False
         self.interfaz_estado = InterfazEstado()
         self.jugador = Jugador()
         self.primera_entrada = True
@@ -46,6 +47,7 @@ class RecycleScene:
             (180, 210, 255),
         ]
         self.fuente = LocalizedFont(None, 28)
+        self.text_renderer = None
         self.inventario = inventario
         self.fondo = self._cargar_fondo()
         ruta_chatarra = os.path.join(
@@ -92,6 +94,10 @@ class RecycleScene:
             self.primera_visita = False
             self.primera_entrada = False
 
+        """ if not self.musica_iniciada:
+            reproducir_musica_reciclaje()
+            self.musica_iniciada = True """
+            
         rect_previo = self.jugador.rectangulo.copy()
         self.jugador.actualizar(teclas)
         self.jugador.rectangulo.clamp_ip(limites_pantalla)
@@ -198,6 +204,7 @@ class RecycleScene:
         #pygame.draw.rect(pantalla, (120, 255, 120), salida)
         
         self.jugador.dibujar(pantalla)
+
         if (
             self.jugador.rectangulo.colliderect(
                 self.materiales_entrada.inflate(40, 40)
@@ -209,13 +216,16 @@ class RecycleScene:
                 if self.game_state.chatarra > 0
                 else "Necesitas chatarra"
             )
-            indicacion = self.fuente.render(
-                texto_interaccion, True, (255, 255, 255)
+
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                texto_interaccion,
+                True,
+                (255, 255, 255),
+                (pantalla.get_width() // 2, 20),
+                ancla="midtop",
             )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
-            )
+
         if (
             self.jugador.rectangulo.colliderect(
                 self.materiales_salida.inflate(40, 40)
@@ -226,18 +236,28 @@ class RecycleScene:
                 self.game_state.dia_actual
                 - self.game_state.dia_inicio_procesamiento
             )
+
             texto_interaccion = (
                 f"E: retirar {self.game_state.chatarra_en_proceso} materiales"
                 if dias_procesando >= 2
                 else f"Procesando: faltan {2 - dias_procesando} días"
             )
-            indicacion = self.fuente.render(
-                texto_interaccion, True, (255, 255, 255)
+
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                texto_interaccion,
+                True,
+                (255, 255, 255),
+                (pantalla.get_width() // 2, 20),
+                ancla="midtop",
             )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
-            )
+
         if self.jugador.rectangulo.colliderect(salida):
-            indicacion = self.fuente.render("Salida automatica", True, (255, 255, 255))
-            pantalla.blit(indicacion, indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)))
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                "Salida automatica",
+                True,
+                (255, 255, 255),
+                (pantalla.get_width() // 2, 20),
+                ancla="midtop",
+            )

@@ -24,6 +24,7 @@ class OptionsMenu:
 	def __init__(self):
 		self.abierto = False
 		self.pagina = "principal"
+		self.text_renderer = None
 		self.seleccion = 0
 		self.volumen_musica = 10
 		self.volumen_efectos = 10
@@ -276,12 +277,13 @@ class OptionsMenu:
 				"controles": "Controles",
 			}[self.pagina]
 		)
-		texto_titulo = self.fuente_titulo.render(
-			titulo, True, (255, 255, 255)
-		)
-		pantalla.blit(
-			texto_titulo,
-			texto_titulo.get_rect(midtop=(panel.centerx, panel.top + 24)),
+		self.text_renderer.dibujar_texto(
+			self.fuente_titulo,
+			titulo,
+			True,
+			(255, 255, 255),
+			(panel.centerx, panel.top + 24),
+			ancla="midtop",
 		)
 
 		if self.pagina == "principal":
@@ -326,9 +328,19 @@ class OptionsMenu:
 		for indice, (etiqueta, rectangulo) in enumerate(
 			zip(etiquetas, rectangulos)
 		):
-			texto = self.fuente.render(etiqueta, True, (255, 255, 255))
-			texto_rect = texto.get_rect(center=rectangulo.center)
-			pantalla.blit(texto, texto_rect)
+			superficie = self.fuente.render(
+				etiqueta, True, (255, 255, 255)
+			)
+			texto_rect = superficie.get_rect(center=rectangulo.center)
+
+			self.text_renderer.dibujar_texto(
+				self.fuente,
+				etiqueta,
+				True,
+				(255, 255, 255),
+				rectangulo.center,
+				ancla="center",
+			)
 			if indice == self.seleccion:
 				pygame.draw.line(
 					pantalla,
@@ -348,14 +360,13 @@ class OptionsMenu:
 			zip(rectangulos, etiquetas)
 		):
 			flecha_izquierda, flecha_derecha = rectangulos_flecha
-			texto = self.fuente_pequena.render(
-				etiqueta, True, (255, 255, 255)
-			)
-			pantalla.blit(
-				texto,
-				texto.get_rect(
-					midleft=(panel.left + 24, flecha_izquierda.centery)
-				),
+			self.text_renderer.dibujar_texto(
+				self.fuente_pequena,
+				etiqueta,
+				True,
+				(255, 255, 255),
+				(panel.left + 24, flecha_izquierda.centery),
+				ancla="midleft",
 			)
 			self._dibujar_flecha(
 				pantalla,
@@ -369,23 +380,29 @@ class OptionsMenu:
 				"›",
 				indice == self.seleccion,
 			)
-			valor = self.fuente_pequena.render(
-				f"{nivel}/10", True, (255, 255, 255)
-			)
-			pantalla.blit(
-				valor,
-				valor.get_rect(
-					center=(
-						(flecha_izquierda.centerx + flecha_derecha.centerx) // 2,
-						flecha_izquierda.centery,
-					)
+			self.text_renderer.dibujar_texto(
+				self.fuente_pequena,
+				f"{nivel}/10",
+				True,
+				(255, 255, 255),
+				(
+					(flecha_izquierda.centerx + flecha_derecha.centerx) // 2,
+					flecha_izquierda.centery,
 				),
+				ancla="center",
 			)
 
 	def _dibujar_flecha(self, pantalla, rectangulo, texto, seleccionada):
 		superficie = self.fuente.render(texto, True, (255, 255, 255))
 		rect_texto = superficie.get_rect(center=rectangulo.center)
-		pantalla.blit(superficie, rect_texto)
+		self.text_renderer.dibujar_texto(
+			self.fuente,
+			texto,
+			True,
+			(255, 255, 255),
+			rectangulo.center,
+			ancla="center",
+		)
 		if seleccionada:
 			pygame.draw.line(
 				pantalla,
@@ -399,56 +416,66 @@ class OptionsMenu:
 		espacio = 32
 		inicio_y = panel.top + 94
 		for indice, control in enumerate(self.CONTROLES):
-			texto = self.fuente_pequena.render(
-				control, True, (255, 255, 255)
-			)
-			pantalla.blit(
-				texto,
-				texto.get_rect(
-					midtop=(panel.centerx, inicio_y + indice * espacio)
-				),
+			self.text_renderer.dibujar_texto(
+				self.fuente_pequena,
+				control,
+				True,
+				(255, 255, 255),
+				(panel.centerx, inicio_y + indice * espacio),
+				ancla="midtop",
 			)
 
 	def _dibujar_texto_en_lineas(
 		self, pantalla, texto, centro_x, inicio_y, ancho_maximo
 	):
-		texto = translate(texto)
 		lineas = []
 		linea = ""
+
 		for palabra in texto.split():
 			candidata = f"{linea} {palabra}".strip()
+
 			if (
 				linea
-				and self.fuente_pequena.size(candidata)[0] > ancho_maximo
+				and self.fuente_pequena.size(translate(candidata))[0]
+				> ancho_maximo
 			):
 				lineas.append(linea)
 				linea = palabra
 			else:
 				linea = candidata
+
 		if linea:
 			lineas.append(linea)
 
 		for indice, texto_linea in enumerate(lineas):
-			superficie = self.fuente_pequena.render(
-				texto_linea, True, (255, 255, 255)
-			)
-			pantalla.blit(
-				superficie,
-				superficie.get_rect(
-					midtop=(
-						centro_x,
-						inicio_y + indice * self.fuente_pequena.get_linesize(),
-					)
+			self.text_renderer.dibujar_texto(
+				self.fuente_pequena,
+				texto_linea,
+				True,
+				(255, 255, 255),
+				(
+					centro_x,
+					inicio_y + indice * self.fuente_pequena.get_linesize(),
 				),
+				ancla="midtop",
 			)
 
 	def _dibujar_boton_volver(self, pantalla, panel):
 		rectangulo = self._boton_volver(panel)
-		texto = self.fuente_pequena.render(
+
+		superficie = self.fuente_pequena.render(
 			"Volver", True, (255, 255, 255)
 		)
-		texto_rect = texto.get_rect(center=rectangulo.center)
-		pantalla.blit(texto, texto_rect)
+		texto_rect = superficie.get_rect(center=rectangulo.center)
+
+		self.text_renderer.dibujar_texto(
+			self.fuente_pequena,
+			"Volver",
+			True,
+			(255, 255, 255),
+			rectangulo.center,
+			ancla="center",
+		)
 		if self.pagina in ("opciones", "controles", "sonido"):
 			pygame.draw.line(
 				pantalla,

@@ -2,6 +2,7 @@
 import os
 import pygame
 
+from projectFarm.config import VERSION_JUEGO
 from projectFarm.localization import LocalizedFont
 from ..entities import Jugador
 
@@ -41,22 +42,15 @@ class TitleScene:
 
         self.tiempo_anterior = pygame.time.get_ticks()
 
-        # Título
+        # Textos
+        self.text_renderer = None
         self.fuente = LocalizedFont(None, 48)
-        self.texto = self.fuente.render(
-            "Iniciar partida", True, (255, 255, 255)
-        )
-        self.boton_rect = self.texto.get_rect()
-
-        # Pie de página
         self.fuente_pie = LocalizedFont(None, 18)
-        self.texto_pie = self.fuente_pie.render(
-            "© 2026 - TV2D Facultad de Ingeniería "
-            "Tecnólogo en Informática - Desarrollado por Charliexover",
-            True,
-            (220, 220, 220)
-        )
-        self.pie_rect = self.texto_pie.get_rect()
+
+        self.boton_rect = self.fuente.render(
+            "Iniciar partida", True, (255, 255, 255)
+        ).get_rect()
+        self.pie_rect = pygame.Rect(0, 0, 0, 0)
 
         # Fondo parallax
         ruta_fondo = os.path.join(
@@ -186,27 +180,43 @@ class TitleScene:
             pantalla.blit(superficie_negra, zona.topleft)
 
         pantalla.set_clip(None)
-        pantalla.set_clip(None)
 
         # Título
         self.boton_rect.center = (
             pantalla.get_rect().centerx - 150,
             pantalla.get_rect().centery
         )
-        self.texto = self.fuente.render(
-            "Iniciar partida", True, (255, 255, 255)
+
+        self.text_renderer.dibujar_texto(
+            self.fuente,
+            "Iniciar partida",
+            True,
+            (255, 255, 255),
+            self.boton_rect.center,
+            ancla="center",
         )
-        pantalla.blit(self.texto, self.boton_rect)
 
         # Pie de página
-        self.texto_pie = self.fuente_pie.render(
-            "© 2026 - TV2D Facultad de Ingeniería "
-            "Tecnólogo en Informática - Desarrollado por Charliexover",
-            True,
-            (220, 220, 220),
-        )
         self.pie_rect.midbottom = (
             pantalla.get_rect().centerx,
             pantalla.get_height() - 1
         )
-        pantalla.blit(self.texto_pie, self.pie_rect)
+
+        self.text_renderer.dibujar_texto(
+            self.fuente_pie,
+            "© 2026 - TV2D Facultad de Ingeniería "
+            "Tecnólogo en Informática - Desarrollado por Charliexover",
+            True,
+            (220, 220, 220),
+            self.pie_rect.midbottom,
+            ancla="midbottom",
+        )
+        # Número de versión
+        self.text_renderer.dibujar_texto(
+            self.fuente_pie,
+            f"v{VERSION_JUEGO}",
+            True,
+            (180, 180, 180),
+            (pantalla.get_width() - 8, pantalla.get_height() - 1),
+            ancla="bottomright",
+        )

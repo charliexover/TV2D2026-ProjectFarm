@@ -32,6 +32,7 @@ class Inventario:
 		self.separacion_grupo = separacion_grupo
 		self.margen_inferior = margen_inferior
 		self.fuente_cantidad = LocalizedFont(None, 18)
+		self.oscurecer_hotbar = False
 		self.slot_seleccionado = 0
 		ruta_fondo_inventario = os.path.join(
 			os.path.dirname(__file__),
@@ -162,17 +163,26 @@ class Inventario:
 				pygame.draw.rect(pantalla, (232, 232, 215), casilla)
 				pygame.draw.rect(pantalla, (60, 65, 48), casilla, 2)
 
-			numero = self.fuente_cantidad.render(
-				str(indice + 1), True, (255, 255, 255)
-			)
-			numero_sombra = self.fuente_cantidad.render(
-				str(indice + 1), True, (25, 25, 20)
-			)
-			numero_rect = numero.get_rect(
-				topleft=(casilla.left + 3, casilla.top + 1)
-			)
-			pantalla.blit(numero_sombra, numero_rect.move(1, 1))
-			pantalla.blit(numero, numero_rect)
+			if self.text_renderer is not None:
+				posicion_numero = (casilla.left + 3, casilla.top + 1)
+
+				# Sombra del número.
+				self.text_renderer.dibujar_texto(
+					self.fuente_cantidad,
+					str(indice + 1),
+					True,
+					(25, 25, 20),
+					(posicion_numero[0] + 1, posicion_numero[1] + 1),
+				)
+
+				# Número principal.
+				self.text_renderer.dibujar_texto(
+					self.fuente_cantidad,
+					str(indice + 1),
+					True,
+					(255, 255, 255),
+					posicion_numero,
+				)
 
 			if indice == self.SLOT_MANO:
 				sprite_mano = (
@@ -203,20 +213,31 @@ class Inventario:
 					sprite_semilla,
 					sprite_semilla.get_rect(center=casilla.center),
 				)
-				cantidad = self.fuente_cantidad.render(
-					str(cantidad_semillas), True, (255, 220, 40)
-				)
-				cantidad_rect = cantidad.get_rect(
-					bottomright=(casilla.right - 2, casilla.bottom - 2)
-				)
-				sombra_cantidad = self.fuente_cantidad.render(
-					str(cantidad_semillas), True, (25, 25, 20)
-				)
-				pantalla.blit(
-					sombra_cantidad,
-					cantidad_rect.move(1, 1),
-				)
-				pantalla.blit(cantidad, cantidad_rect)
+				if self.text_renderer is not None:
+					posicion_cantidad = (
+						casilla.right - 2,
+						casilla.bottom - 2,
+					)
+
+					# Sombra de la cantidad.
+					self.text_renderer.dibujar_texto(
+						self.fuente_cantidad,
+						str(cantidad_semillas),
+						True,
+						(25, 25, 20),
+						(posicion_cantidad[0] + 1, posicion_cantidad[1] + 1),
+						ancla="bottomright",
+					)
+
+					# Cantidad principal.
+					self.text_renderer.dibujar_texto(
+						self.fuente_cantidad,
+						str(cantidad_semillas),
+						True,
+						(255, 220, 40),
+						posicion_cantidad,
+						ancla="bottomright",
+					)
 			elif indice == self.SLOT_REGADERA:
 				sprite_regadera = (
 					self.sprite_regadera_mejorada
@@ -280,6 +301,7 @@ class InterfazEstado:
 			pygame.image.load(ruta_estrella_encendida).convert_alpha(), (12, 12)
 		)
 		self.fuente = LocalizedFont(None, 28)
+		self.fuente_ayuda = LocalizedFont(None, 22)
 		ruta_zanahoria = os.path.join(
 					os.path.dirname(__file__), "..", "projectFarm", "assets", "zanahoriaIcon.png"
 				)
@@ -391,12 +413,14 @@ class InterfazEstado:
 			ventana.topleft,
 		)
 
-		titulo = self.fuente.render(
-			"RECURSOS",
-			True,
-			(255, 255, 255),
-		)
-		pantalla.blit(titulo, (ventana.x + 20, ventana.y + 12))
+		if self.text_renderer is not None:
+			self.text_renderer.dibujar_texto(
+				self.fuente,
+				"RECURSOS",
+				True,
+				(255, 255, 255),
+				(ventana.x + 20, ventana.y + 12),
+			)
 
 		recursos = [
 			(
@@ -441,27 +465,26 @@ class InterfazEstado:
 		for icono, nombre, cantidad in recursos:
 			pantalla.blit(icono, (ventana.x + 20, y))
 
-			texto = self.fuente.render(
-				f"{nombre}: {cantidad}",
-				True,
-				(255, 255, 255),
-			)
-			pantalla.blit(texto, (ventana.x + 55, y + 2))
+			if self.text_renderer is not None:
+				self.text_renderer.dibujar_texto(
+					self.fuente,
+					f"{nombre}: {cantidad}",
+					True,
+					(255, 255, 255),
+					(ventana.x + 55, y + 2),
+				)
 
 			y += 32
 
-		# Instrucción para cerrar
-		ayuda = LocalizedFont(None, 22).render(
-			"Tab: cerrar",
-			True,
-			(200, 200, 200),
-		)
-		pantalla.blit(
-			ayuda,
-			ayuda.get_rect(
-				midbottom=(ventana.centerx, ventana.bottom - 8)
-			),
-		)
+		if self.text_renderer is not None:
+			self.text_renderer.dibujar_texto(
+				self.fuente_ayuda,
+				"Tab: cerrar",
+				True,
+				(200, 200, 200),
+				(ventana.centerx, ventana.bottom - 8),
+				ancla="midbottom",
+			)
 
 	def dibujar(
 		self,
@@ -487,15 +510,14 @@ class InterfazEstado:
 		pantalla.blit(self.sprite_hud_oxigeno, rect_hud)
 
 		# Día actual
-		texto_dia = self.fuente.render(
-			str(game_state.dia_actual),
-			True,
-			(255, 255, 255),
-		)
-		pantalla.blit(
-			texto_dia,
-			(posicion_x + 40, posicion_y + 20),
-		)
+		if self.text_renderer is not None:
+			self.text_renderer.dibujar_texto(
+				self.fuente,
+				str(game_state.dia_actual),
+				True,
+				(255, 255, 255),
+				(posicion_x + 40, posicion_y + 20),
+			)
 		centros_estrella = (
 			(posicion_x + 79, posicion_y + 20),
 			(posicion_x + 97, posicion_y + 20),
@@ -607,16 +629,14 @@ class InterfazEstado:
 			(posicion_x + 6, posicion_y + 65),
 		)
 
-		texto_creditos = self.fuente.render(
-			str(game_state.creditos),
-			True,
-			(255, 255, 255),
-		)
-
-		pantalla.blit(
-			texto_creditos,
-			(posicion_x + 30, posicion_y + 70),
-		)
+		if self.text_renderer is not None:
+			self.text_renderer.dibujar_texto(
+				self.fuente,
+				str(game_state.creditos),
+				True,
+				(255, 255, 255),
+				(posicion_x + 30, posicion_y + 70),
+			)
 
 		""" y = y_inicial
 		pantalla.blit(self.sprite_zanahoria, (10, y))

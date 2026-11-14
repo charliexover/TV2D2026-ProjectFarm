@@ -77,6 +77,12 @@ class ExpeditionScene:
         self.al_salir = al_salir
         self.fuente = LocalizedFont(None, 28)
         self.fuente_monitor = LocalizedFont(None, 18)
+        self.text_renderer = None
+
+        self.fuente_titulo_panel = LocalizedFont(None, 22)
+        self.fuente_datos_panel = LocalizedFont(None, 18)
+        self.fuente_pequena_panel = LocalizedFont(None, 16)
+        self.fuente_boton = LocalizedFont(None, 18)
 
         ruta_mapa = os.path.normpath(
             os.path.join(
@@ -645,12 +651,11 @@ class ExpeditionScene:
                     self.RADIO_MARCADOR,
                 )
             pantalla.set_clip(recorte_previo)
-            pantalla.blit(
-                self.fuente.render(
-                    "Arrastra para explorar | E o clic derecho: cerrar",
-                    True,
-                    (255, 255, 255),
-                ),
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                "Arrastra para explorar | E o clic derecho: cerrar",
+                True,
+                (255, 255, 255),
                 (50, 10),
             )
             self._dibujar_panel_expediciones(pantalla, rect_monitor)
@@ -672,21 +677,32 @@ class ExpeditionScene:
             )
 
             fondo_texto = texto.get_rect(
-                midbottom=(pantalla.get_width() // 2,
-                        pantalla.get_height() - 30)
+                midbottom=(
+                    pantalla.get_width() // 2,
+                    pantalla.get_height() - 30
+                )
             ).inflate(20, 12)
 
             pygame.draw.rect(pantalla, (30, 30, 30), fondo_texto)
-            pantalla.blit(texto, texto.get_rect(center=fondo_texto.center))
+
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                self.mensaje_rover,
+                True,
+                (255, 255, 255),
+                fondo_texto.center,
+                ancla="center",
+            )
 
         salida = self._obtener_rectangulo_salida(rect_fondo.topleft)
         if self.jugador.rectangulo.colliderect(salida):
-            indicacion = self.fuente.render(
-                "Salida automatica", True, (255, 255, 255)
-            )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                "Salida automatica",
+                True,
+                (255, 255, 255),
+                (pantalla.get_width() // 2, 20),
+                ancla="midtop",
             )
             return
 
@@ -699,12 +715,13 @@ class ExpeditionScene:
             rect_fondo.top + self.pc_mapa[1],
         )
         if self.jugador.rectangulo.colliderect(pc.inflate(40, 40)):
-            indicacion = self.fuente.render(
-                "E: consultar mapa", True, (255, 255, 255)
-            )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(midtop=(pantalla.get_width() // 2, 20)),
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                "E: consultar mapa",
+                True,
+                (255, 255, 255),
+                (pantalla.get_width() // 2, 20),
+                ancla="midtop",
             )
 
     def _dibujar_panel_expediciones(self, pantalla, rect_monitor):
@@ -718,9 +735,9 @@ class ExpeditionScene:
         amarillo = (245, 195, 75)
 
         # Fuentes del panel.
-        fuente_titulo = LocalizedFont(None, 22)
-        fuente_datos = LocalizedFont(None, 18)
-        fuente_pequena = LocalizedFont(None, 16)
+        fuente_titulo = self.fuente_titulo_panel
+        fuente_datos = self.fuente_datos_panel
+        fuente_pequena = self.fuente_pequena_panel
 
         # Panel inferior, separado del monitor principal.
         y = rect_monitor.bottom + 10
@@ -746,13 +763,11 @@ class ExpeditionScene:
         )
 
         # Encabezado.
-        encabezado = fuente_titulo.render(
+        self.text_renderer.dibujar_texto(
+            self.fuente_titulo_panel,
             "INFORME DE EXPLORACIÓN",
             True,
             azul,
-        )
-        pantalla.blit(
-            encabezado,
             (panel.left + 10, panel.top + 6),
         )
 
@@ -816,23 +831,19 @@ class ExpeditionScene:
                 1,
             )
 
-            etiqueta = fuente_pequena.render(
+            self.text_renderer.dibujar_texto(
+                self.fuente_pequena_panel,
                 nombre,
                 True,
                 gris,
+                (tarjeta.left + 5, tarjeta.top + 3),
             )
-            valor = fuente_datos.render(
+
+            self.text_renderer.dibujar_texto(
+                self.fuente_datos_panel,
                 str(cantidad),
                 True,
                 blanco,
-            )
-
-            pantalla.blit(
-                etiqueta,
-                (tarjeta.left + 5, tarjeta.top + 3),
-            )
-            pantalla.blit(
-                valor,
                 (tarjeta.left + 5, tarjeta.top + 16),
             )
 
@@ -870,12 +881,11 @@ class ExpeditionScene:
             4,
         )
 
-        pantalla.blit(
-            fuente_datos.render(
-                texto_estado,
-                True,
-                color_estado,
-            ),
+        self.text_renderer.dibujar_texto(
+            self.fuente_datos_panel,
+            texto_estado,
+            True,
+            color_estado,
             (panel.left + 27, y_estado),
         )
 
@@ -885,26 +895,33 @@ class ExpeditionScene:
         mensaje = self.game_state.resultado_ultima_expedicion
 
         if mensaje:
-            texto_mensaje = fuente_pequena.render(
+            ancho_maximo = panel.width - 20
+
+            texto_mensaje = self.fuente_pequena_panel.render(
                 mensaje,
                 True,
                 amarillo,
             )
 
-            # Evitar que el texto sobresalga del panel.
-            ancho_maximo = panel.width - 20
+            escala_horizontal = min(
+                1.0,
+                ancho_maximo / texto_mensaje.get_width(),
+            )
 
-            if texto_mensaje.get_width() > ancho_maximo:
-                texto_mensaje = pygame.transform.scale(
-                    texto_mensaje,
-                    (
-                        ancho_maximo,
-                        texto_mensaje.get_height(),
-                    ),
+            if escala_horizontal < 1.0:
+                tamano_fuente = max(
+                    1,
+                    round(self.fuente_pequena_panel.get_height() * escala_horizontal),
                 )
+                fuente_resultado = LocalizedFont(None, tamano_fuente)
+            else:
+                fuente_resultado = self.fuente_pequena_panel
 
-            pantalla.blit(
-                texto_mensaje,
+            self.text_renderer.dibujar_texto(
+                fuente_resultado,
+                mensaje,
+                True,
+                amarillo,
                 (panel.left + 10, y_estado + 16),
             )
 
@@ -922,15 +939,13 @@ class ExpeditionScene:
             self.punto_seleccionado is not None
             and destino_seleccionado is None
         ):
-            pantalla.blit(
-                fuente_pequena.render(
-                    self.punto_seleccionado,
-                    True,
-                    blanco,
-                ),
+            self.text_renderer.dibujar_texto(
+                self.fuente_pequena_panel,
+                self.punto_seleccionado,
+                True,
+                blanco,
                 (panel.left + 10, y_estado + desplazamiento_detalles),
             )
-
         if destino_seleccionado is not None:
             expedicion = self.EXPEDICIONES[destino_seleccionado]
             dias_expedicion = self._obtener_duracion_expedicion(
@@ -963,18 +978,30 @@ class ExpeditionScene:
             y_recompensas = y_detalles + 14
 
             if y_recompensas + texto_recompensas.get_height() <= limite_informacion:
-                pantalla.blit(
-                    texto_detalles,
+                self.text_renderer.dibujar_texto(
+                    self.fuente_pequena_panel,
+                    detalles,
+                    True,
+                    blanco,
                     (panel.left + 10, y_detalles),
                 )
 
-                pantalla.blit(
-                    texto_recompensas,
+                self.text_renderer.dibujar_texto(
+                    self.fuente_pequena_panel,
+                    translate(
+                        f"TIERRA +{recompensa[0]}  |  ATMÓSFERA +{recompensa[1]}  |  MINERALES +{recompensa[2]}"
+                    ),
+                    True,
+                    gris,
                     (panel.left + 10, y_recompensas),
                 )
+
             elif y_detalles + texto_detalles.get_height() <= limite_informacion:
-                pantalla.blit(
-                    texto_detalles,
+                self.text_renderer.dibujar_texto(
+                    self.fuente_pequena_panel,
+                    detalles,
+                    True,
+                    blanco,
                     (panel.left + 10, y_detalles),
                 )
 
@@ -1048,15 +1075,13 @@ class ExpeditionScene:
             1,
         )
 
-        etiqueta = LocalizedFont(None, 18).render(
+        self.text_renderer.dibujar_texto(
+            self.fuente_boton,
             texto,
             True,
             color_texto,
-        )
-
-        pantalla.blit(
-            etiqueta,
-            etiqueta.get_rect(center=rectangulo.center),
+            rectangulo.center,
+            ancla="center",
         )
 
     def _obtener_rectangulo_hitos(self, limites_pantalla):
@@ -1098,17 +1123,13 @@ class ExpeditionScene:
         )
 
         # Título.
-        titulo = self.fuente.render(
+        self.text_renderer.dibujar_texto(
+            self.fuente,
             "Hitos de exploración del Rover",
             True,
             (255, 255, 255),
-        )
-
-        pantalla.blit(
-            titulo,
-            titulo.get_rect(
-                midtop=(rect_ventana.centerx, rect_ventana.top + 14)
-            ),
+            (rect_ventana.centerx, rect_ventana.top + 14),
+            ancla="midtop",
         )
 
         # Botón para cerrar.
@@ -1125,37 +1146,35 @@ class ExpeditionScene:
             rect_cerrar,
         )
 
-        texto_cerrar = self.fuente_monitor.render(
+        self.text_renderer.dibujar_texto(
+            self.fuente_monitor,
             "X",
             True,
             (255, 255, 255),
-        )
-
-        pantalla.blit(
-            texto_cerrar,
-            texto_cerrar.get_rect(center=rect_cerrar.center),
+            rect_cerrar.center,
+            ancla="center",
         )
 
         # Créditos obtenidos en esta interacción.
         if self.creditos_hitos_mensaje > 0:
-            texto_creditos = self.fuente_monitor.render(
+            texto_creditos = (
                 f"¡Recompensas obtenidas: "
-                f"+{self.creditos_hitos_mensaje} créditos!",
-                True,
-                (120, 230, 140),
+                f"+{self.creditos_hitos_mensaje} créditos!"
             )
+            color_creditos = (120, 230, 140)
         else:
-            texto_creditos = self.fuente_monitor.render(
-                "Consulta tu progreso y completa nuevos hitos.",
-                True,
-                (210, 210, 210),
+            texto_creditos = (
+                "Consulta tu progreso y completa nuevos hitos."
             )
+            color_creditos = (210, 210, 210)
 
-        pantalla.blit(
+        self.text_renderer.dibujar_texto(
+            self.fuente_monitor,
             texto_creditos,
-            texto_creditos.get_rect(
-                midtop=(rect_ventana.centerx, rect_ventana.top + 52)
-            ),
+            True,
+            color_creditos,
+            (rect_ventana.centerx, rect_ventana.top + 52),
+            ancla="midtop",
         )
 
         # Agrupar los hitos por tipo de muestra.
@@ -1173,12 +1192,13 @@ class ExpeditionScene:
 
         for nombre_categoria, atributo in categorias:
             # Encabezado de categoría.
-            encabezado = self.fuente_monitor.render(
+            self.text_renderer.dibujar_texto(
+                self.fuente_monitor,
                 nombre_categoria,
                 True,
                 (100, 200, 240),
+                (x_texto, y),
             )
-            pantalla.blit(encabezado, (x_texto, y))
             y += 23
 
             cantidad_actual = getattr(
@@ -1253,14 +1273,11 @@ class ExpeditionScene:
                     else (230, 230, 230)
                 )
 
-                superficie_texto = self.fuente_monitor.render(
+                self.text_renderer.dibujar_texto(
+                    self.fuente_monitor,
                     texto_hito,
                     True,
                     color_texto,
-                )
-
-                pantalla.blit(
-                    superficie_texto,
                     (x_texto + 26, y),
                 )
 
@@ -1303,18 +1320,14 @@ class ExpeditionScene:
             y += 5
 
         # Instrucción para cerrar la ventana.
-        pie = self.fuente_monitor.render(
+        self.text_renderer.dibujar_texto(
+            self.fuente_monitor,
             "Pulsa E o ESC para cerrar",
             True,
             (190, 200, 210),
-        )
-
-        pantalla.blit(
-            pie,
-            pie.get_rect(
-                midbottom=(
-                    rect_ventana.centerx,
-                    rect_ventana.bottom - 10,
-                )
+            (
+                rect_ventana.centerx,
+                rect_ventana.bottom - 10,
             ),
+            ancla="midbottom",
         )

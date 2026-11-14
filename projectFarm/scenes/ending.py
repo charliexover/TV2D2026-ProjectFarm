@@ -66,6 +66,7 @@ class EndingScene:
         self.creditos_completados = False
         self.musica_ending_iniciada = False
         self.musica_exterior_iniciada = False
+        self.text_renderer = None
         self.posicion_mascota = (
             self.POSICION_MASCOTA
             if posicion_mascota is None
@@ -93,6 +94,7 @@ class EndingScene:
             "A partir de ahora, queda disfrutar",
             f"Solo {nombre_mascota} y yo",
         )
+        self.frases_finales = frases_finales
         nombre_sprite = (
             "catSprites.png"
             if tipo_mascota == "gato"
@@ -306,9 +308,15 @@ class EndingScene:
                 ) / self.DURACION_FUNDIDO_TEXTO
                 opacidad = int(255 * (1 - progreso))
 
-            texto = self.superficies_frases[indice_frase]
-            texto.set_alpha(max(0, min(255, opacidad)))
-            pantalla.blit(texto, texto.get_rect(center=pantalla.get_rect().center))
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                self.FRASES[indice_frase],
+                True,
+                (255, 255, 255),
+                pantalla.get_rect().center,
+                ancla="center",
+                alpha=max(0, min(255, opacidad)),
+            )
             return
 
         tiempo_fondo = tiempo - self.duracion_secuencia
@@ -350,8 +358,17 @@ class EndingScene:
                 (tiempo - self.inicio_frases_finales)
                 / self.DURACION_FRASE_FINAL
             )
-            texto = self.superficies_frases_finales[indice_frase]
-            pantalla.blit(texto, texto.get_rect(center=pantalla.get_rect().center))
+
+            frase = self.frases_finales[indice_frase]
+
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                frase,
+                True,
+                (255, 255, 255),
+                pantalla.get_rect().center,
+                ancla="center",
+            )
         elif tiempo >= self.inicio_titulo:
             titulo, posicion_titulo = self._obtener_titulo_escalado(
                 pantalla.get_size()
@@ -364,10 +381,22 @@ class EndingScene:
                 ),
             )
             y = pantalla.get_height() - desplazamiento
-            for superficie, espacio in self.superficies_creditos:
+            for (texto, estilo), (superficie, espacio) in zip(
+                self.CREDITOS,
+                self.superficies_creditos,
+            ):
                 rectangulo = superficie.get_rect(
                     midtop=(pantalla.get_width() // 2, round(y))
                 )
+
                 if rectangulo.bottom >= 0 and rectangulo.top < pantalla.get_height():
-                    pantalla.blit(superficie, rectangulo)
+                    self.text_renderer.dibujar_texto(
+                        self.fuentes_creditos[estilo],
+                        texto,
+                        True,
+                        (255, 255, 255),
+                        (pantalla.get_width() // 2, round(y)),
+                        ancla="midtop",
+                    )
+
                 y += superficie.get_height() + espacio

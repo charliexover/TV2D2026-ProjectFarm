@@ -78,6 +78,7 @@ _TRANSLATIONS = {
     "Siguiente >": "Next >",
     "Efectos de sonido": "Sound Effects",
     "Salir del juego": "Quit Game",
+    "Salida de la cueva": "Cave Exit",
     "Edif.": "Building",
     "Chatarra": "Scrap",
     "Cultivo": "Crop",
@@ -118,7 +119,7 @@ _TRANSLATIONS = {
     "Esc: cerrar": "Esc: close",
     "E: interactuar con antena": "E: interact with the antenna",
     "E: revisar generador": "E: inspect the generator",
-    "Clic con martillo o E: revisar el muro": "Click with the hammer or press E: inspect the wall",
+    "E: revisar el muro": "E: inspect the wall",
     "Entra en la cueva": "Enter the cave",
     "La Antena": "The Antenna",
     "Centro de Datos": "Data Center",
@@ -518,12 +519,33 @@ def translate(text):
 
 
 
+
 class LocalizedFont:
     def __init__(self, *args, **kwargs):
+        self._font_args = args
+        self._font_kwargs = kwargs
         self._font = pygame.font.Font(*args, **kwargs)
+        self._fuentes_escaladas = {}
 
     def render(self, text, *args, **kwargs):
         return self._font.render(translate(text), *args, **kwargs)
+
+    def render_scaled(self, text, escala, *args, **kwargs):
+        tamano_original = self._font_args[1]
+        tamano_escalado = max(1, round(tamano_original * escala))
+
+        if tamano_escalado not in self._fuentes_escaladas:
+            argumentos = list(self._font_args)
+            argumentos[1] = tamano_escalado
+
+            self._fuentes_escaladas[tamano_escalado] = pygame.font.Font(
+                *argumentos,
+                **self._font_kwargs,
+            )
+
+        fuente = self._fuentes_escaladas[tamano_escalado]
+
+        return fuente.render(translate(text), *args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self._font, name)

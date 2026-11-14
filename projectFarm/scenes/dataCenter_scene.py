@@ -47,6 +47,7 @@ class DataCenterScene:
         self.inventario = inventario
         self.fondo = self._cargar_fondo()
         self.mensaje_antena = None
+        self.text_renderer = None
 
     def interactuar_pc(self):
         if self.game_state.centro_datos_completado:
@@ -96,10 +97,8 @@ class DataCenterScene:
                 )
 
         else:
-            self.mensaje_antena = (
-                f"Datos pendientes en Antena: "
-                f"{self.game_state.antena_objetivo}. "
-                "Descarga los datos y vuelve a esta PC."
+            self.mensaje_antena = translate(
+                f"Datos pendientes en Antena: {self.game_state.antena_objetivo}. Descarga los datos y vuelve a esta PC."
             )
             
     def _envolver_texto_mensaje(self, texto, ancho_maximo):
@@ -152,16 +151,13 @@ class DataCenterScene:
         else:
             texto = f"Enviando datos... {progreso}%"
 
-        superficie_texto = self.fuente.render(
+        self.text_renderer.dibujar_texto(
+            self.fuente,
             texto,
             True,
             (255, 255, 255),
-        )
-        pantalla.blit(
-            superficie_texto,
-            superficie_texto.get_rect(
-                center=(pantalla.get_width() // 2, y - 18)
-            ),
+            (pantalla.get_width() // 2, y - 18),
+            ancla="center",
         )
 
     def _cargar_fondo(self):
@@ -246,42 +242,52 @@ class DataCenterScene:
         salida = self.obtener_salida(limites_pantalla)
         self.jugador.dibujar(pantalla)
         if self.jugador.rectangulo.colliderect(salida):
-            indicacion = self.fuente.render(
-                "Salida automatica", True, (255, 255, 255)
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                "Salida automatica",
+                True,
+                (255, 255, 255),
+                (pantalla.get_width() // 2, 20),
+                ancla="midtop",
             )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(
-                    midtop=(pantalla.get_width() // 2, 20)
-                ),
-            )
+
         elif self.jugador.rectangulo.colliderect(self.pc.inflate(40, 40)):
-            indicacion = self.fuente.render(
-                "E: consultar PC", True, (255, 255, 255)
-            )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(
-                    midtop=(pantalla.get_width() // 2, 20)
-                ),
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                "E: consultar PC",
+                True,
+                (255, 255, 255),
+                (pantalla.get_width() // 2, 20),
+                ancla="midtop",
             )
 
         if self.mensaje_antena is not None:
             lineas = self._envolver_texto_mensaje(
-                translate(self.mensaje_antena),
+                self.mensaje_antena,
                 limites_pantalla.width - 240,
             )
-            alto = max(80, len(lineas) * self.fuente.get_linesize() + 24)
-            cuadro_mensaje = pygame.Rect(
-                100, limites_pantalla.height - 80 - alto,
-                limites_pantalla.width - 200, alto,
+
+            alto = max(
+                80,
+                len(lineas) * self.fuente.get_linesize() + 24,
             )
+
+            cuadro_mensaje = pygame.Rect(
+                100,
+                limites_pantalla.height - 80 - alto,
+                limites_pantalla.width - 200,
+                alto,
+            )
+
             pygame.draw.rect(pantalla, (0, 0, 0), cuadro_mensaje)
             pygame.draw.rect(pantalla, (255, 255, 255), cuadro_mensaje, 2)
+
             for indice, linea in enumerate(lineas):
-                mensaje = self.fuente.render(linea, True, (255, 255, 255))
-                pantalla.blit(
-                    mensaje,
+                self.text_renderer.dibujar_texto(
+                    self.fuente,
+                    linea,
+                    True,
+                    (255, 255, 255),
                     (
                         cuadro_mensaje.left + 20,
                         cuadro_mensaje.top + 12

@@ -1,0 +1,2 @@
+VERSION_JUEGO = "1.0.1"
+NOMBRE_JUEGO = "Mars&Me"

@@ -26,6 +26,7 @@ class Radar:
     def __init__(self):
         self.fuente = LocalizedFont(None, 18)
         self.fuente_titulo = LocalizedFont(None, 22)
+        self.text_renderer = None
 
     def dibujar(
         self,
@@ -190,15 +191,29 @@ class Radar:
 
     def _dibujar_leyenda(self, panel):
         elementos = (
-            (translate("Edif."), self.COLOR_EDIFICIO, (8, 113)),
-            (translate("Chatarra"), self.COLOR_CHATARRA, (76, 113)),
-            (translate("Cultivo"), self.COLOR_CULTIVO, (8, 132)),
-            (translate("Cosechable"), self.COLOR_COSECHABLE, (76, 132)),
-            (translate("Antena"), self.COLOR_ANTENA, (8, 151)),
-            (translate("Generador"), self.COLOR_GENERADOR, (76, 151)),
-            (translate("Jugador"), self.COLOR_JUGADOR, (8, 170)),
+            ("Edif.", self.COLOR_EDIFICIO, (8, 113)),
+            ("Chatarra", self.COLOR_CHATARRA, (76, 113)),
+            ("Cultivo", self.COLOR_CULTIVO, (8, 132)),
+            ("Cosechable", self.COLOR_COSECHABLE, (76, 132)),
+            ("Antena", self.COLOR_ANTENA, (8, 151)),
+            ("Generador", self.COLOR_GENERADOR, (76, 151)),
+            ("Jugador", self.COLOR_JUGADOR, (8, 170)),
         )
+
         for etiqueta, color, (x, y) in elementos:
             pygame.draw.rect(panel, color, (x + 1, y + 3, 6, 6))
-            texto = self.fuente.render(etiqueta, True, (220, 230, 230))
-            panel.blit(texto, (x + 12, y))
+
+            if self.text_renderer is not None:
+                self.text_renderer.dibujar_texto(
+                    self.fuente,
+                    etiqueta,
+                    True,
+                    (220, 230, 230),
+                    (
+                        self.MARGEN_X + x + 12,
+                        self.MARGEN_Y + y,
+                    ),
+                )
+            else:
+                texto = self.fuente.render(etiqueta, True, (220, 230, 230))
+                panel.blit(texto, (x + 12, y))

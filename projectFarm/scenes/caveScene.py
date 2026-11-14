@@ -23,6 +23,7 @@ class CaveScene:
         self.al_salir = al_salir
         self.primera_entrada = True
         self.fuente = LocalizedFont(None, 28)
+        self.text_renderer = None
         self.mensaje = None
         self.mensaje_hasta = 0
         self.ruta_mapa = os.path.normpath(
@@ -300,18 +301,14 @@ class CaveScene:
             64,
             64,
         )
-        if self.jugador.rectangulo.colliderect(zona_salida):
-            indicacion = self.fuente.render(
-                "Salida de la cueva",
-                True,
-                (255, 255, 255),
-            )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(
-                    midtop=(pantalla.get_width() // 2, 20)
-                ),
-            )
+        self.text_renderer.dibujar_texto(
+            self.fuente,
+            "Salida de la cueva",
+            True,
+            (255, 255, 255),
+            (pantalla.get_width() // 2, 20),
+            ancla="midtop",
+        )
         if (
             self._linterna_equipada()
             and not self.game_state.mateRecolectado
@@ -324,31 +321,25 @@ class CaveScene:
                 )
             )
         ):
-            indicacion = self.fuente.render(
+            self.text_renderer.dibujar_texto(
+                self.fuente,
                 "E: recoger el mate",
                 True,
                 (255, 255, 255),
-            )
-            pantalla.blit(
-                indicacion,
-                indicacion.get_rect(
-                    midtop=(pantalla.get_width() // 2, 48)
-                ),
+                (pantalla.get_width() // 2, 48),
+                ancla="midtop",
             )
         if (
             self.mensaje is not None
             and pygame.time.get_ticks() < self.mensaje_hasta
         ):
-            mensaje = self.fuente.render(
+            self.text_renderer.dibujar_texto(
+                self.fuente,
                 self.mensaje,
                 True,
                 (255, 255, 255),
-            )
-            pantalla.blit(
-                mensaje,
-                mensaje.get_rect(
-                    midtop=(pantalla.get_width() // 2, 76)
-                ),
+                (pantalla.get_width() // 2, 76),
+                ancla="midtop",
             )
         self.interfaz_estado.dibujar(
             pantalla,

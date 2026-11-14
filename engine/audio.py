@@ -8,6 +8,7 @@ _sonido_pc = None
 _sonido_tomar_chatarra = None
 _volumen_efectos = 1.0
 _sonidos_efectos = set()
+_musica_reciclaje = False
 
 
 def registrar_sonido_efecto(sonido):
@@ -63,3 +64,14 @@ def reproducir_sonido_tomar_chatarra():
             pygame.mixer.Sound(str(ruta_sonido))
         )
     _sonido_tomar_chatarra.play()
+
+def reproducir_musica_reciclaje():
+    ruta_musica = (
+        Path(__file__).parent.parent
+        / "projectFarm"
+        / "sounds"
+        / "RecycleSound.wav"
+    )
+
+    pygame.mixer.music.load(str(ruta_musica))
+    pygame.mixer.music.play(-1)

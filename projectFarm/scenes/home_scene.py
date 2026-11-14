@@ -3,6 +3,7 @@ import os
 
 import pygame
 
+from engine.input import obtener_posicion_mouse
 from projectFarm.localization import LocalizedFont, translate
 
 from engine.audio import (
@@ -23,6 +24,7 @@ class HomeScene:
     DURACION_CARTEL_DIA = 2100
     INTERVALO_FRAME_SUENO = 250
     CORREOS_POR_PAGINA = 5
+    INTERVALO_COMPRA_SEMILLAS = 300
     PRECIOS_SEMILLAS = {
         1: 2,
         2: 5,
@@ -39,6 +41,8 @@ class HomeScene:
         self.pagina_correos = 0
         self.interfaz_estado = InterfazEstado()
         self.jugador = Jugador()
+        self.semilla_presionada = None
+        self.proxima_compra_semilla = 0
         self.primera_entrada = True
         self.primera_visita = True
         self.al_salir_casa = al_salir_casa
@@ -54,8 +58,9 @@ class HomeScene:
             pygame.Rect(360, 495, 300, 10),
         ]
         self.colores_cuadrados = [(255, 120, 120), (120, 200, 255), (120, 255, 170), (255, 210, 120), (255, 210, 120)]
-        self.fuente = LocalizedFont(None, 28)
-        self.fuente_menu_pc = LocalizedFont(None, 26)
+        self.fuente = LocalizedFont(None, 24)
+        self.fuente_menu_pc = LocalizedFont(None, 24)
+        self.text_renderer = None
         self.menu_pc = None
         self.mensaje_pc = None
         self.mensaje_pc_hasta = 0
@@ -142,6 +147,40 @@ class HomeScene:
         pc.center = (425, 150)
         return pc
 
+    def _actualizar_compra_continua(self, limites_pantalla):
+        if self.semilla_presionada is None:
+            return
+
+        botones = pygame.mouse.get_pressed()
+
+        if not botones[0]:
+            self.semilla_presionada = None
+            return
+
+        # Comprobar que el cursor siga sobre la misma semilla.
+        for accion, rectangulo in self._obtener_rectangulos_opciones_menu_pc(
+            limites_pantalla
+        ):
+            if accion != self.semilla_presionada:
+                continue
+
+            if not rectangulo.collidepoint(obtener_posicion_mouse()):
+                self.semilla_presionada = None
+                return
+
+            break
+        else:
+            self.semilla_presionada = None
+            return
+
+        ahora = pygame.time.get_ticks()
+
+        if ahora >= self.proxima_compra_semilla:
+            self._comprar_semilla(self.semilla_presionada)
+            self.proxima_compra_semilla = (
+                ahora + self.INTERVALO_COMPRA_SEMILLAS
+            )
+
     def vender_zanahorias(self):
         creditos = 0
         for cultivo in CULTIVOS.values():
@@ -216,6 +255,7 @@ class HomeScene:
             correos[inicio : inicio + self.CORREOS_POR_PAGINA],
             cantidad_paginas,
         )
+
 
     def _obtener_opciones_menu_pc(self):
         if self.menu_pc == "principal":
@@ -400,8 +440,12 @@ class HomeScene:
                 self.mensaje_pc = None
 
             else:
-                self._comprar_semilla(accion)
-
+                if isinstance(accion, int):
+                    self.semilla_presionada = accion
+                    self._comprar_semilla(accion)
+                    self.proxima_compra_semilla = (
+                        pygame.time.get_ticks() + self.INTERVALO_COMPRA_SEMILLAS
+                    )
             return
 
     def _comprar_semilla(self, tipo_cultivo):
@@ -460,7 +504,14 @@ class HomeScene:
             titulo = "Bandeja de entrada"
         else:
             titulo = "Correo"
-        texto_titulo = self.fuente.render(titulo, True, (255, 255, 255))
+        self.text_renderer.dibujar_texto(
+            self.fuente,
+            titulo,
+            True,
+            (255, 255, 255),
+            (rect_dialogo.centerx, rect_dialogo.top + 30),
+            ancla="center",
+        )
         if self.menu_pc == "leer_correo":
             self.dibujar_correo_seleccionado(
                 pantalla,
@@ -486,18 +537,15 @@ class HomeScene:
                 1,
             )
 
-            texto_volver = self.fuente_menu_pc.render(
+            self.text_renderer.dibujar_texto(
+                self.fuente_menu_pc,
                 "Volver a la bandeja",
                 True,
                 (255, 255, 255),
+                rect_volver.center,
+                ancla="center",
             )
 
-            pantalla.blit(
-                texto_volver,
-                texto_volver.get_rect(center=rect_volver.center),
-            )
-
-            
             return
 
         opciones = self._obtener_opciones_menu_pc()
@@ -507,7 +555,7 @@ class HomeScene:
         for (etiqueta, accion), (_, rectangulo) in zip(opciones, rectangulos):
             color = (
                 (55, 55, 55)
-                if rectangulo.collidepoint(pygame.mouse.get_pos())
+                if rectangulo.collidepoint(obtener_posicion_mouse())
                 else (30, 35, 45)
             )
             pygame.draw.rect(pantalla, color, rectangulo)
@@ -538,49 +586,45 @@ class HomeScene:
                         - (rectangulo.left + indice * ancho_seccion),
                         rectangulo.height,
                     )
-                    superficie = self.fuente_menu_pc.render(
+                    self.text_renderer.dibujar_texto(
+                        self.fuente_menu_pc,
                         texto,
                         True,
-                        (255, 255, 255)
-                        if habilitado
-                        else (130, 130, 130),
-                    )
-                    pantalla.blit(
-                        superficie,
-                        superficie.get_rect(center=rect_seccion.center),
+                        (255, 255, 255) if habilitado else (130, 130, 130),
+                        rect_seccion.center,
+                        ancla="center",
                     )
                 continue
 
-            texto = self.fuente_menu_pc.render(
-                etiqueta, True, (255, 255, 255)
-            )
-            pantalla.blit(
-                texto,
-                texto.get_rect(center=rectangulo.center),
+            self.text_renderer.dibujar_texto(
+                self.fuente_menu_pc,
+                etiqueta,
+                True,
+                (255, 255, 255),
+                rectangulo.center,
+                ancla="center",
             )
 
-        instruccion = self.fuente_menu_pc.render(
-            "Esc: cerrar / volver", True, (190, 190, 190)
-        )
-        pantalla.blit(
-            instruccion,
-            instruccion.get_rect(
-                midbottom=(rect_dialogo.centerx, rect_dialogo.bottom - 8)
-            ),
+        self.text_renderer.dibujar_texto(
+            self.fuente_menu_pc,
+            "Esc: cerrar / volver",
+            True,
+            (190, 190, 190),
+            (rect_dialogo.centerx, rect_dialogo.bottom - 8),
+            ancla="midbottom",
         )
 
         if (
             self.mensaje_pc is not None
             and pygame.time.get_ticks() < self.mensaje_pc_hasta
         ):
-            mensaje = self.fuente_menu_pc.render(
-                self.mensaje_pc, True, (255, 235, 150)
-            )
-            pantalla.blit(
-                mensaje,
-                mensaje.get_rect(
-                    midbottom=(rect_dialogo.centerx, rect_dialogo.bottom - 38)
-                ),
+            self.text_renderer.dibujar_texto(
+                self.fuente_menu_pc,
+                self.mensaje_pc,
+                True,
+                (255, 235, 150),
+                (rect_dialogo.centerx, rect_dialogo.bottom - 38),
+                ancla="midbottom",
             )
 
     def dibujar_correo_seleccionado(self, pantalla, rect_dialogo):
@@ -593,25 +637,19 @@ class HomeScene:
         margen = 24
         ancho_texto = rect_dialogo.width - margen * 2
 
-        remitente = self.fuente_menu_pc.render(
+        self.text_renderer.dibujar_texto(
+            self.fuente_menu_pc,
             f"De: {correo['remitente']}",
             True,
             (180, 210, 255),
-        )
-
-        pantalla.blit(
-            remitente,
             (rect_dialogo.left + margen, rect_dialogo.top + 65),
         )
 
-        asunto = self.fuente_menu_pc.render(
+        self.text_renderer.dibujar_texto(
+            self.fuente_menu_pc,
             correo["asunto"],
             True,
             color_texto,
-        )
-
-        pantalla.blit(
-            asunto,
             (rect_dialogo.left + margen, rect_dialogo.top + 95),
         )
 
@@ -644,13 +682,11 @@ class HomeScene:
                     self.fuente_menu_pc.size(prueba)[0] > ancho_texto
                     and linea_actual
                 ):
-                    superficie = self.fuente_menu_pc.render(
+                    self.text_renderer.dibujar_texto(
+                        self.fuente_menu_pc,
                         linea_actual,
                         True,
                         color_texto,
-                    )
-                    pantalla.blit(
-                        superficie,
                         (rect_dialogo.left + margen, y),
                     )
                     y += alto_linea
@@ -659,13 +695,11 @@ class HomeScene:
                     linea_actual = prueba
 
             if linea_actual:
-                superficie = self.fuente_menu_pc.render(
+                self.text_renderer.dibujar_texto(
+                    self.fuente_menu_pc,
                     linea_actual,
                     True,
                     color_texto,
-                )
-                pantalla.blit(
-                    superficie,
                     (rect_dialogo.left + margen, y),
                 )
                 y += alto_linea
@@ -673,15 +707,24 @@ class HomeScene:
             y += 5
 
     def dibujar_mensaje_pc(self, pantalla):
-        mensaje = self.fuente.render(
+        superficie = self.fuente.render(
             self.mensaje_pc, True, (255, 255, 255)
         )
-        cuadro = mensaje.get_rect(
+        cuadro = superficie.get_rect(
             midtop=(pantalla.get_width() // 2, 64)
         ).inflate(24, 16)
+
         pygame.draw.rect(pantalla, (0, 0, 0), cuadro)
         pygame.draw.rect(pantalla, (255, 255, 255), cuadro, 2)
-        pantalla.blit(mensaje, mensaje.get_rect(center=cuadro.center))
+
+        self.text_renderer.dibujar_texto(
+            self.fuente,
+            self.mensaje_pc,
+            True,
+            (255, 255, 255),
+            cuadro.center,
+            ancla="center",
+        )
 
     @property
     def duracion_transicion_sueno(self):
@@ -728,6 +771,7 @@ class HomeScene:
             return
 
         if self.menu_pc is not None:
+            self._actualizar_compra_continua(limites_pantalla)
             for evento in eventos:
                 if (
                     evento.type == pygame.KEYDOWN
@@ -749,6 +793,12 @@ class HomeScene:
                         self.menu_pc = None
 
                     return
+                if (
+                    evento.type == pygame.MOUSEBUTTONUP
+                    and evento.button == 1
+                ):
+                    self.semilla_presionada = None
+                    continue
                 if (
                     evento.type == pygame.MOUSEBUTTONDOWN
                     and evento.button == 1
@@ -868,37 +918,33 @@ class HomeScene:
             elif self.jugador.rectangulo.colliderect(
                 self.obtener_area_interaccion_cama(limites_pantalla)
             ):
-                indicacion = self.fuente.render(
-                    "E: avanzar día", True, (255, 255, 255)
-                )
-                pantalla.blit(
-                    indicacion,
-                    indicacion.get_rect(
-                        midtop=(pantalla.get_width() // 2, 20)
-                    ),
+                self.text_renderer.dibujar_texto(
+                    self.fuente,
+                    "E: avanzar día",
+                    True,
+                    (255, 255, 255),
+                    (pantalla.get_width() // 2, 20),
+                    ancla="midtop",
                 )
             elif self.jugador.rectangulo.colliderect(salida):
-                indicacion = self.fuente.render(
-                    "Salida automatica", True, (255, 255, 255)
-                )
-                pantalla.blit(
-                    indicacion,
-                    indicacion.get_rect(
-                        midtop=(pantalla.get_width() // 2, 20)
-                    ),
+                self.text_renderer.dibujar_texto(
+                    self.fuente,
+                    "Salida automatica",
+                    True,
+                    (255, 255, 255),
+                    (pantalla.get_width() // 2, 20),
+                    ancla="midtop",
                 )
             elif self.jugador.rectangulo.colliderect(pc):
-                indicacion = self.fuente.render(
+                self.text_renderer.dibujar_texto(
+                    self.fuente,
                     "E: interactuar con la PC",
                     True,
                     (255, 255, 255),
+                    (pantalla.get_width() // 2, 30),
+                    ancla="midtop",
                 )
-                pantalla.blit(
-                    indicacion,
-                    indicacion.get_rect(
-                        midtop=(pantalla.get_width() // 2, 30)
-                    ),
-                )
+        
         self.inventario.dibujar(pantalla, self.game_state)
         if (
             self.mensaje_desmayo is not None
@@ -908,30 +954,36 @@ class HomeScene:
                 "Por desmayarte, la agencia te descontó el 10%",
                 "de los créditos que poseías.",
             )
-            superficies = [
-                self.fuente_menu_pc.render(
-                    linea, True, (255, 255, 255)
-                )
-                for linea in lineas_mensaje
+            alturas = [
+                self.fuente_menu_pc.get_linesize()
+                for _ in lineas_mensaje
             ]
+
             cuadro = pygame.Rect(
                 0,
                 0,
-                max(superficie.get_width() for superficie in superficies) + 32,
-                sum(superficie.get_height() for superficie in superficies) + 24,
+                max(
+                    self.fuente_menu_pc.size(linea)[0]
+                    for linea in lineas_mensaje
+                ) + 32,
+                sum(alturas) + 24,
             )
             cuadro.midtop = (pantalla.get_width() // 2, 88)
+
             pygame.draw.rect(pantalla, (0, 0, 0), cuadro)
             pygame.draw.rect(pantalla, (255, 255, 255), cuadro, 2)
-            for indice, superficie in enumerate(superficies):
-                pantalla.blit(
-                    superficie,
-                    superficie.get_rect(
-                        midtop=(
-                            cuadro.centerx,
-                            cuadro.top + 8 + indice * superficie.get_height(),
-                        )
+
+            for indice, linea in enumerate(lineas_mensaje):
+                self.text_renderer.dibujar_texto(
+                    self.fuente_menu_pc,
+                    linea,
+                    True,
+                    (255, 255, 255),
+                    (
+                        cuadro.centerx,
+                        cuadro.top + 8 + indice * alturas[indice],
                     ),
+                    ancla="midtop",
                 )
         if (
             self.mensaje_guardado is not None
@@ -942,14 +994,16 @@ class HomeScene:
                 if "no se pudo guardar" in self.mensaje_guardado.lower()
                 else (255, 255, 255)
             )
-            mensaje = self.fuente.render(self.mensaje_guardado, True, color)
-            pantalla.blit(
-                mensaje,
-                mensaje.get_rect(midtop=(pantalla.get_width() // 2, 52)),
+            self.text_renderer.dibujar_texto(
+                self.fuente,
+                self.mensaje_guardado,
+                True,
+                color,
+                (pantalla.get_width() // 2, 52),
+                ancla="midtop",
             )
-        self.dibujar_transicion_sueno(pantalla)
 
-    def dibujar_transicion_sueno(self, pantalla):
+    def dibujar_transicion_sueno(self, pantalla, escala, desplazamiento):
         inicio_sueno = self.transicion_sueno_inicio
         if inicio_sueno is None:
             return
@@ -958,11 +1012,10 @@ class HomeScene:
         inicio_fundido = self.DURACION_ANIMACION_SUENO
         inicio_cartel_dia = inicio_fundido + self.DURACION_FUNDIDO
         inicio_fundido_entrada = inicio_cartel_dia + self.DURACION_CARTEL_DIA
-        capa_negra = pygame.Surface(pantalla.get_size(), pygame.SRCALPHA)
-        opacidad = 0
 
         if tiempo_transcurrido < inicio_fundido:
             return
+
         if tiempo_transcurrido < inicio_cartel_dia:
             progreso = (
                 tiempo_transcurrido - inicio_fundido
@@ -978,16 +1031,26 @@ class HomeScene:
             )
             opacidad = round(255 * (1 - progreso))
 
+        capa_negra = pygame.Surface(pantalla.get_size(), pygame.SRCALPHA)
         capa_negra.fill((0, 0, 0, opacidad))
-        pantalla.blit(capa_negra, (0, 0))
+
+        pantalla.blit(capa_negra, desplazamiento)
 
         if tiempo_transcurrido >= inicio_cartel_dia:
-            superficie_dia = self.fuente.render(
-                f"DÍA {self.dia_mostrado}", True, (255, 255, 255)
+            superficie_dia = self.fuente.render_scaled(
+                f"DÍA {self.dia_mostrado}",
+                escala,
+                True,
+                (255, 255, 255),
             )
+
             if tiempo_transcurrido >= inicio_fundido_entrada:
                 superficie_dia.set_alpha(opacidad)
-            pantalla.blit(
-                superficie_dia,
-                superficie_dia.get_rect(center=pantalla.get_rect().center),
+
+            rect = superficie_dia.get_rect(
+                center=(
+                    desplazamiento[0] + round(400 * escala),
+                    desplazamiento[1] + round(300 * escala),
+                )
             )
+            pantalla.blit(superficie_dia, rect)
